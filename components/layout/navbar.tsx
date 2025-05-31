@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CalendarDays } from "lucide-react";
 import { ModeToggle } from "@/components/layout/mode-toggle";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +18,7 @@ import {
 
 export default function Navbar() {
   const { data: session } = useSession();
+  const router = useRouter();
 
   return (
     <div className="top-navbar fixed left-0 right-0 top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-2">
@@ -60,7 +62,7 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={() => signIn("google")}>Sign in</Button>
+            <Button onClick={() => router.push("/auth/signin")}>Sign in</Button>
           )}
         </div>
       </div>
