@@ -19,7 +19,7 @@ export default function Navbar() {
   const { data: session } = useSession();
 
   return (
-    <div className="top-navbar fixed left-0 right-0 top-0 z-50 border-b px-4 py-2">
+    <div className="top-navbar fixed left-0 right-0 top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CalendarDays size={24} className="text-primary" />

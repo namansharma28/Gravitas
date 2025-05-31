@@ -90,7 +90,7 @@ export default function Sidebar() {
   return (
     <>
       {isMobile && (
-        <div className="fixed bottom-0 left-0 z-20 flex h-14 w-full items-center justify-between border-t bg-background px-4 md:hidden">
+        <div className="fixed bottom-0 left-0 z-20 flex h-14 w-full items-center justify-between border-t bg-background px-4 md:hidden shadow-black">
           {sidebarLinks.slice(0, 5).map((link) => (
             <Link key={link.href} href={link.href} className="text-muted-foreground">
               {link.icon}
@@ -101,7 +101,7 @@ export default function Sidebar() {
 
       <div
         className={cn(
-          "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm transition-all duration-300 ease-in-out md:hidden",
+          "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm transition-all duration-300 ease-in-out md:hidden shadow-black",
           isSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
         )}
         onClick={closeSidebar}
@@ -109,7 +109,7 @@ export default function Sidebar() {
 
       <div
         className={cn(
-          "fixed left-4 top-20 z-40 flex h-[calc(100vh-6rem)] flex-col bg-white p-4 shadow-lg transition-all duration-300 ease-in-out dark:bg-gray-950",
+          "fixed left-4 top-20 z-40 flex h-[calc(100vh-6rem)] flex-col bg-white p-4 shadow-[0_0_15px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out dark:bg-gray-950 dark:shadow-[0_0_15px_rgba(0,0,0,0.3)] rounded-lg border",
           isCollapsed ? "sidebar-collapsed" : "sidebar-expanded"
         )}
       >
