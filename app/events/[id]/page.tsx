@@ -1,22 +1,82 @@
-import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { Calendar, Clock, MapPin, Users, Share2, ArrowLeft, Pencil, Plus, FileText, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, MapPin, Share2, User, Users } from "lucide-react";
-import { mockUpcomingEvents, mockFeedItems } from "@/lib/mock-data";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
+import { Separator } from "@/components/ui/separator";
+import { mockFeedItems } from "@/lib/mock-data";
 import FeedCard from "@/components/feed/feed-card";
 
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  capacity: number;
+  image: string;
+  community: {
+    id: string;
+    name: string;
+    handle: string;
+    avatar: string;
+  };
+  attendees: string[];
+  interested: string[];
+}
+
 export default function EventPage({ params }: { params: { id: string } }) {
-  const event = mockUpcomingEvents.find(e => e.id === params.id);
-  
+  const { data: session } = useSession();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`/api/events/${params.id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch event');
+        }
+        const data = await response.json();
+        setEvent(data);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load event details",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvent();
+  }, [params.id, toast]);
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
   if (!event) {
     return (
       <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
         <h1 className="text-3xl font-bold">Event Not Found</h1>
-        <p className="mb-6 text-muted-foreground">The event you're looking for doesn't exist.</p>
+        <p className="mb-6 text-muted-foreground">The event you&apos;re looking for doesn&apos;t exist.</p>
         <Button asChild>
           <Link href="/calendar">Explore Events</Link>
         </Button>
@@ -28,6 +88,9 @@ export default function EventPage({ params }: { params: { id: string } }) {
   const eventUpdates = mockFeedItems.filter(item => 
     item.type === "update" && item.eventId === event.id
   );
+
+  // Check if user is a member of the community (in a real app, this would be a proper check)
+  const isCommunityMember = session?.user?.id ? true : false;
 
   return (
     <div className="container mx-auto pb-16">
@@ -63,6 +126,23 @@ export default function EventPage({ params }: { params: { id: string } }) {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {/* Admin Controls */}
+          {isCommunityMember && (
+            <div className="flex flex-wrap gap-3">
+              <Button className="gap-2">
+                <Pencil size={16} /> Edit Event
+              </Button>
+              <Button className="gap-2">
+                <Plus size={16} /> Create Update
+              </Button>
+              <Button asChild className="gap-2">
+                <Link href={`/events/${event.id}/forms`}>
+                  <FileText size={16} /> Forms
+                </Link>
+              </Button>
+            </div>
+          )}
+
           <Card>
             <CardContent className="p-6">
               <div className="flex flex-wrap gap-6">
@@ -84,15 +164,14 @@ export default function EventPage({ params }: { params: { id: string } }) {
                   <MapPin className="mt-0.5 h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Location</p>
-                    <p>Downtown Convention Center</p>
-                    <p className="text-xs text-muted-foreground">123 Main St, San Francisco</p>
+                    <p>{event.location}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <Users className="mt-0.5 h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Attendees</p>
-                    <p>120 going • 45 interested</p>
+                    <p>{event.attendees.length} going • {event.interested.length} interested</p>
                   </div>
                 </div>
               </div>
@@ -101,43 +180,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
 
               <div>
                 <h2 className="mb-4 text-xl font-semibold">About This Event</h2>
-                <p className="text-muted-foreground">
-                  Join us for an engaging session where industry experts will share their knowledge and insights on modern web development practices. This workshop is perfect for both beginners and experienced developers looking to expand their skills.
-                </p>
-                <div className="mt-4 space-y-2">
-                  <p className="text-muted-foreground">
-                    <strong>What to expect:</strong> Hands-on coding sessions, networking opportunities, and Q&A with experienced developers.
-                  </p>
-                  <p className="text-muted-foreground">
-                    <strong>What to bring:</strong> Your laptop with a code editor installed. All other materials will be provided.
-                  </p>
-                </div>
-
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium">Speakers</h3>
-                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="flex items-center gap-3 rounded-lg border p-3">
-                      <Avatar>
-                        <AvatarImage src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg" />
-                        <AvatarFallback>JD</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">James Davidson</p>
-                        <p className="text-sm text-muted-foreground">Senior Developer at TechCorp</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-lg border p-3">
-                      <Avatar>
-                        <AvatarImage src="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg" />
-                        <AvatarFallback>EL</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">Emily Lee</p>
-                        <p className="text-sm text-muted-foreground">UX Designer at DesignStudio</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <p className="text-muted-foreground">{event.description}</p>
               </div>
             </CardContent>
           </Card>
@@ -185,7 +228,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
                         </div>
                       </div>
                       <p className="text-sm">
-                        Will this workshop cover Next.js 14 features? I'm particularly interested in the new data fetching methods.
+                        Will this workshop cover Next.js 14 features? I&apos;m particularly interested in the new data fetching methods.
                       </p>
                     </div>
                     
@@ -201,7 +244,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
                         </div>
                       </div>
                       <p className="text-sm">
-                        Yes, we'll cover the latest Next.js features, including the new app router and data fetching patterns. Looking forward to seeing you there!
+                        Yes, we&apos;ll cover the latest Next.js features, including the new app router and data fetching patterns. Looking forward to seeing you there!
                       </p>
                     </div>
                   </div>
@@ -228,11 +271,11 @@ export default function EventPage({ params }: { params: { id: string } }) {
               <div className="mt-2 space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Total spots</span>
-                  <span className="text-sm font-medium">150</span>
+                  <span className="text-sm font-medium">{event.capacity}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Available</span>
-                  <span className="text-sm font-medium">30</span>
+                  <span className="text-sm font-medium">{event.capacity - event.attendees.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Registration closes</span>

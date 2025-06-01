@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Globe, Mail, MapPin, Share2, Users, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Globe, MapPin, Calendar, Clock, Users, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CommunityHeader from "@/components/communities/community-header";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Loader2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Community {
   id: string;
@@ -26,12 +27,34 @@ interface Community {
   createdAt: string;
 }
 
+interface Member {
+  id: string;
+  name: string;
+  image: string;
+  email: string;
+  isAdmin: boolean;
+}
+
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  capacity: number;
+  image?: string;
+  attendees: string[];
+  interested: string[];
+}
+
 export default function CommunityPage({ params }: { params: { handle: string } }) {
   const { data: session } = useSession();
   const { toast } = useToast();
   const [community, setCommunity] = useState<Community | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
     const fetchCommunity = async () => {
@@ -40,6 +63,20 @@ export default function CommunityPage({ params }: { params: { handle: string } }
         if (response.ok) {
           const data = await response.json();
           setCommunity(data);
+          
+          // Fetch member details
+          const membersResponse = await fetch(`/api/communities/${params.handle}/members`);
+          if (membersResponse.ok) {
+            const memberData = await membersResponse.json();
+            setMembers(memberData);
+          }
+
+          // Fetch events
+          const eventsResponse = await fetch(`/api/communities/${params.handle}/events`);
+          if (eventsResponse.ok) {
+            const eventsData = await eventsResponse.json();
+            setEvents(eventsData);
+          }
         } else {
           throw new Error('Community not found');
         }
@@ -79,108 +116,53 @@ export default function CommunityPage({ params }: { params: { handle: string } }
     );
   }
 
-  const isAdmin = session?.user?.id && community.admins.includes(session.user.id);
+  const isMember = session?.user && community.members.includes(session.user.id);
+  const isAdmin = session?.user && community.admins.includes(session.user.id);
 
   return (
     <div className="container mx-auto pb-16">
-      <div className="mb-6 space-y-6">
-        {/* Header/Banner */}
-        <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 md:h-64">
-          {community.banner && (
-            <img
-              src={community.banner}
-              alt={`${community.name} banner`}
-              className="h-full w-full object-cover"
-            />
-          )}
-          <div className="absolute inset-x-0 bottom-0 flex items-end p-6">
-            <div className="relative flex items-end">
-              <Avatar className="h-24 w-24 border-4 border-background">
-                <AvatarImage src={community.avatar} />
-                <AvatarFallback>{community.name.substring(0, 2)}</AvatarFallback>
-              </Avatar>
-              <div className="ml-6 pb-3">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-white md:text-3xl">{community.name}</h1>
-                  {community.isVerified && (
-                    <Badge className="border-blue-300 bg-blue-500/10 text-white">Verified</Badge>
-                  )}
-                </div>
-                <p className="text-sm text-white/90">@{community.handle}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      <CommunityHeader community={community} />
 
-        {/* Community Info */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div className="col-span-2">
-            <p className="text-lg">{community.description}</p>
-          </div>
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center md:justify-end">
-            {!isAdmin && (
-              <Button 
-                size="lg" 
-                className="gap-1"
-                onClick={() => setIsFollowing(!isFollowing)}
-              >
-                <Users size={16} />
-                {isFollowing ? "Following" : "Follow"}
-              </Button>
-            )}
-            <Button variant="outline" size="icon">
-              <Share2 size={16} />
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        {community.location && (
           <Card>
             <CardContent className="flex flex-row items-center gap-2 p-4">
-              <Users className="h-5 w-5 text-muted-foreground" />
+              <MapPin className="h-5 w-5 text-muted-foreground" />
               <div>
-                <p className="text-sm text-muted-foreground">Members</p>
-                <p className="font-medium">{community.members.length.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Location</p>
+                <p className="font-medium">{community.location}</p>
               </div>
             </CardContent>
           </Card>
-          {community.location && (
-            <Card>
-              <CardContent className="flex flex-row items-center gap-2 p-4">
-                <MapPin className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Location</p>
-                  <p className="font-medium">{community.location}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          {community.website && (
-            <Card>
-              <CardContent className="flex flex-row items-center gap-2 p-4">
-                <Globe className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Website</p>
-                  <a 
-                    href={community.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-blue-600 hover:underline dark:text-blue-400"
-                  >
-                    {new URL(community.website).hostname}
-                  </a>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        )}
+        {community.website && (
+          <Card>
+            <CardContent className="flex flex-row items-center gap-2 p-4">
+              <Globe className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Website</p>
+                <a 
+                  href={community.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  {new URL(community.website).hostname}
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      <Tabs defaultValue="feed" className="w-full">
-        <TabsList className="mb-4 grid w-full grid-cols-3 lg:w-[400px]">
+      <Tabs defaultValue="feed" className="mt-6">
+        <TabsList className="mb-4 grid w-full grid-cols-4 lg:w-[400px]">
           <TabsTrigger value="feed">Feed</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
+          {(isMember || isAdmin) && (
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="feed" className="mt-0">
@@ -209,9 +191,72 @@ export default function CommunityPage({ params }: { params: { handle: string } }
 
         <TabsContent value="events" className="mt-0">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="p-8 text-center">
-              <p className="text-muted-foreground">No events scheduled yet.</p>
-            </Card>
+            {(isMember || isAdmin) && (
+              <Card className="p-6">
+                <CardContent className="flex flex-col items-center justify-center gap-4">
+                  <Button className="w-full" asChild>
+                    <Link href={`/communities/${community.handle}/events/create`}>
+                      <Plus className="mr-2 h-4 w-4" /> Create Event
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            
+            {events.length > 0 ? (
+              events.map((event) => (
+                <Link key={event.id} href={`/events/${event.id}`}>
+                  <Card className="transition-colors hover:bg-accent">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        <div 
+                          className="h-20 w-20 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600"
+                          style={{
+                            backgroundImage: event.image 
+                              ? `url(${event.image})`
+                              : undefined,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }}
+                        />
+                        <div className="flex-1 space-y-1">
+                          <h3 className="font-semibold">{event.title}</h3>
+                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              <span>{event.date}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              <span>{event.time}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              <span>{event.location}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Users className="h-4 w-4" />
+                              <span>{event.attendees.length} going</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))
+            ) : (
+              <Card className="p-8 text-center">
+                <p className="text-muted-foreground">No events scheduled yet.</p>
+                {(isMember || isAdmin) && (
+                  <Button className="mt-4" asChild>
+                    <Link href={`/communities/${community.handle}/events/create`}>
+                      Create Event
+                    </Link>
+                  </Button>
+                )}
+              </Card>
+            )}
           </div>
         </TabsContent>
 
@@ -219,19 +264,20 @@ export default function CommunityPage({ params }: { params: { handle: string } }
           <Card>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {community.members.map((memberId, index) => (
-                  <div key={memberId} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted">
+                {members.map((member) => (
+                  <div key={member.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted">
                     <Avatar>
+                      <AvatarImage src={member.image} />
                       <AvatarFallback>
-                        {String.fromCharCode(65 + index % 26)}
+                        {member.name?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="text-sm font-medium">
-                        Member {index + 1}
+                        {member.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {community.admins.includes(memberId) ? "Admin" : "Member"}
+                        {member.isAdmin ? "Admin" : "Member"}
                       </p>
                     </div>
                   </div>
@@ -240,6 +286,43 @@ export default function CommunityPage({ params }: { params: { handle: string } }
             </CardContent>
           </Card>
         </TabsContent>
+
+        {(isMember || isAdmin) && (
+          <TabsContent value="settings" className="mt-0">
+            <Card>
+              <CardContent className="p-6">
+                {isAdmin ? (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Community Settings</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Manage your community settings and permissions.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button asChild>
+                        <Link href={`/communities/${community.handle}/edit`}>
+                          Edit Community
+                        </Link>
+                      </Button>
+                      <Button variant="outline">
+                        Manage Members
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Member Settings</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Manage your membership settings.
+                    </p>
+                    <Button variant="destructive">
+                      Leave Community
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

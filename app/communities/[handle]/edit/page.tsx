@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowRight, Upload, X } from "lucide-react";
+import { ArrowLeft, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -24,20 +25,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "Community name must be at least 2 characters.",
   }).max(50, {
     message: "Community name must not exceed 50 characters."
-  }),
-  handle: z.string().min(3, {
-    message: "Handle must be at least 3 characters."
-  }).max(30, {
-    message: "Handle must not exceed 30 characters."
-  }).regex(/^[a-z0-9-]+$/, {
-    message: "Handle can only contain lowercase letters, numbers, and hyphens."
   }),
   description: z.string().max(500, {
     message: "Description must not exceed 500 characters."
@@ -50,23 +45,77 @@ const formSchema = z.object({
   }).optional(),
 });
 
-export default function CreateCommunityPage() {
-  const { toast } = useToast();
+interface Community {
+  id: string;
+  name: string;
+  handle: string;
+  description: string;
+  banner: string;
+  avatar: string;
+  website?: string;
+  location?: string;
+  admins: string[];
+}
+
+export default function EditCommunityPage({ params }: { params: { handle: string } }) {
   const router = useRouter();
+  const { toast } = useToast();
+  const { data: session } = useSession();
+  const [isLoading, setIsLoading] = useState(false);
+  const [community, setCommunity] = useState<Community | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      handle: "",
       description: "",
       website: "",
       location: "",
     },
   });
+
+  useEffect(() => {
+    const fetchCommunity = async () => {
+      try {
+        const response = await fetch(`/api/communities/${params.handle}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCommunity(data);
+          setAvatarPreview(data.avatar);
+          setBannerPreview(data.banner);
+          form.reset({
+            name: data.name,
+            description: data.description || "",
+            website: data.website || "",
+            location: data.location || "",
+          });
+
+          // Check if user is admin
+          if (!data.admins.includes(session?.user?.id)) {
+            toast({
+              title: "Unauthorized",
+              description: "You don't have permission to edit this community",
+              variant: "destructive",
+            });
+            router.push(`/communities/${params.handle}`);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching community:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load community data",
+          variant: "destructive",
+        });
+      }
+    };
+
+    if (session?.user) {
+      fetchCommunity();
+    }
+  }, [params.handle, form, toast, session, router]);
 
   const handleImageUpload = async (file: File, type: 'avatar' | 'banner') => {
     try {
@@ -140,8 +189,8 @@ export default function CreateCommunityPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/communities', {
-        method: 'POST',
+      const response = await fetch(`/api/communities/${params.handle}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -154,19 +203,18 @@ export default function CreateCommunityPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create community');
+        throw new Error(error.error || 'Failed to update community');
       }
 
-      const data = await response.json();
       toast({
-        title: "Community Created",
-        description: `Successfully created @${values.handle}`,
+        title: "Community Updated",
+        description: "Successfully updated community details",
       });
-      router.push(`/communities/${data.handle}`);
+      router.push(`/communities/${params.handle}`);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create community. Please try again.",
+        description: error.message || "Failed to update community. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -174,11 +222,25 @@ export default function CreateCommunityPage() {
     }
   }
 
+  if (!community) {
+    return (
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center">
+        <h1 className="text-3xl font-bold">Loading...</h1>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight">Create a Community</h1>
-        <p className="text-muted-foreground">Start building your own community and host events</p>
+        <Button variant="ghost" className="mb-4" asChild>
+          <Link href={`/communities/${params.handle}`}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Community
+          </Link>
+        </Button>
+        <h1 className="text-4xl font-bold tracking-tight">Edit Community</h1>
+        <p className="text-muted-foreground">Update your community's information</p>
       </div>
 
       <div className="mx-auto max-w-2xl">
@@ -186,7 +248,7 @@ export default function CreateCommunityPage() {
           <CardHeader>
             <CardTitle>Community Details</CardTitle>
             <CardDescription>
-              Fill out the information below to create your community. You can edit these details later.
+              Update your community's information below.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -195,24 +257,24 @@ export default function CreateCommunityPage() {
                 <div className="space-y-4">
                   <FormItem>
                     <FormLabel>Community Banner</FormLabel>
-                    <div className="relative aspect-[3/1] w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/50">
+                    <div className="relative aspect-[3/1] w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/50 group">
                       {bannerPreview ? (
-                        <>
+                        <div className="relative h-full w-full">
                           <img 
                             src={bannerPreview} 
                             alt="Banner preview" 
                             className="h-full w-full object-cover" 
                           />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-2 top-2"
-                            onClick={() => setBannerPreview(null)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </>
+                          <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                            <Upload className="h-8 w-8 text-white" />
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleFileChange(e, 'banner')}
+                            />
+                          </label>
+                        </div>
                       ) : (
                         <label className="flex h-full cursor-pointer flex-col items-center justify-center">
                           <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
@@ -233,24 +295,24 @@ export default function CreateCommunityPage() {
                       <div className="mb-2 text-center">
                         <FormLabel>Community Avatar</FormLabel>
                       </div>
-                      <div className="relative mb-4 h-36 w-36 overflow-hidden rounded-full border-2 border-dashed bg-muted/50">
+                      <div className="relative mb-4 h-36 w-36 overflow-hidden rounded-full border-2 border-dashed bg-muted/50 group">
                         {avatarPreview ? (
-                          <>
+                          <div className="relative h-full w-full">
                             <img 
                               src={avatarPreview} 
                               alt="Avatar preview" 
                               className="h-full w-full object-cover" 
                             />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-1 top-1"
-                              onClick={() => setAvatarPreview(null)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
+                            <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                              <Upload className="h-8 w-8 text-white" />
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleFileChange(e, 'avatar')}
+                              />
+                            </label>
+                          </div>
                         ) : (
                           <label className="flex h-full cursor-pointer flex-col items-center justify-center">
                             <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
@@ -264,7 +326,7 @@ export default function CreateCommunityPage() {
                           </label>
                         )}
                       </div>
-                      <p className="mt-2 text-center text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         Recommended: 400x400px JPG, PNG
                       </p>
                     </div>
@@ -277,32 +339,16 @@ export default function CreateCommunityPage() {
                           <FormItem>
                             <FormLabel>Community Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Tech Enthusiasts" {...field} />
+                              <Input {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="handle"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Community Handle</FormLabel>
-                            <div className="flex items-center">
-                              <span className="mr-1 text-muted-foreground">@</span>
-                              <FormControl>
-                                <Input placeholder="tech-enthusiasts" {...field} />
-                              </FormControl>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              This will be your unique identifier. Only lowercase letters, numbers, and hyphens.
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <p className="text-sm text-muted-foreground">
+                        Handle: @{community.handle} (cannot be changed)
+                      </p>
                     </div>
                   </div>
 
@@ -314,7 +360,6 @@ export default function CreateCommunityPage() {
                         <FormLabel>Description</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Tell people what your community is about..."
                             className="min-h-[120px] resize-y"
                             {...field}
                           />
@@ -332,7 +377,7 @@ export default function CreateCommunityPage() {
                         <FormItem>
                           <FormLabel>Website (optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="https://example.com" {...field} />
+                            <Input {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -346,7 +391,7 @@ export default function CreateCommunityPage() {
                         <FormItem>
                           <FormLabel>Location (optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="San Francisco, CA" {...field} />
+                            <Input {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -356,20 +401,10 @@ export default function CreateCommunityPage() {
 
                   <Button 
                     type="submit" 
-                    className="w-full gap-1"
+                    className="w-full"
                     disabled={isLoading}
                   >
-                    {isLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                        <span>Creating Community...</span>
-                      </div>
-                    ) : (
-                      <>
-                        Create Community
-                        <ArrowRight size={16} />
-                      </>
-                    )}
+                    {isLoading ? "Updating Community..." : "Update Community"}
                   </Button>
                 </div>
               </form>

@@ -1,45 +1,38 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import clientPromise from '@/lib/mongodb';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(
   request: Request,
   { params }: { params: { handle: string } }
 ) {
   try {
-    const session = await getServerSession();
     const client = await clientPromise;
     const db = client.db('gravitas');
 
-    const community = await db.collection('communities').findOne(
-      { handle: params.handle },
-      {
-        projection: {
-          _id: 0,
-          id: { $toString: '$_id' },
-          name: 1,
-          handle: 1,
-          description: 1,
-          banner: 1,
-          avatar: 1,
-          website: 1,
-          location: 1,
-          members: 1,
-          admins: 1,
-          isVerified: 1,
-          createdAt: 1
-        }
-      }
-    );
-
+    const community = await db.collection('communities').findOne({ handle: params.handle });
     if (!community) {
-      return NextResponse.json(
-        { error: 'Community not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Community not found' }, { status: 404 });
     }
 
-    return NextResponse.json(community);
+    return NextResponse.json({
+      id: community._id.toString(),
+      name: community.name,
+      handle: community.handle,
+      description: community.description,
+      banner: community.banner,
+      avatar: community.avatar,
+      website: community.website,
+      location: community.location,
+      members: community.members,
+      admins: community.admins,
+      events: community.events,
+      updates: community.updates,
+      followersCount: community.followersCount,
+      isVerified: community.isVerified,
+      createdAt: community.createdAt
+    });
   } catch (error: any) {
     console.error('Error fetching community:', error);
     return NextResponse.json(
@@ -47,4 +40,64 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: { handle: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const data = await request.json();
+    const { name, description, banner, avatar, website, location } = data;
+
+    const client = await clientPromise;
+    const db = client.db('gravitas');
+
+    // Get community and check permissions
+    const community = await db.collection('communities').findOne({ handle: params.handle });
+    if (!community) {
+      return NextResponse.json({ error: 'Community not found' }, { status: 404 });
+    }
+
+    if (!community.admins.includes(session.user.id)) {
+      return NextResponse.json({ error: 'Not authorized to edit community' }, { status: 403 });
+    }
+
+    // Update community
+    await db.collection('communities').updateOne(
+      { handle: params.handle },
+      {
+        $set: {
+          name,
+          description,
+          banner,
+          avatar,
+          website,
+          location,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    return NextResponse.json({
+      handle: params.handle,
+      name,
+      description,
+      banner,
+      avatar,
+      website,
+      location,
+    });
+  } catch (error: any) {
+    console.error('Error updating community:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to update community' },
+      { status: 500 }
+    );
+  }
+}

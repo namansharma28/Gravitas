@@ -3,11 +3,15 @@ import { getServerSession } from 'next-auth';
 import { Community } from '@/lib/models/community';
 import clientPromise from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import { authOptions } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
+    const session = await getServerSession(authOptions);
+    console.log('Session in API route:', session); // Debug log
+
+    if (!session?.user?.id) {
+      console.log('No user ID in session:', session); // Debug log
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
