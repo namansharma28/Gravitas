@@ -12,6 +12,7 @@ import {
   Settings,
   User,
   Users,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,15 @@ interface SidebarLinkProps {
   active: boolean;
   collapsed: boolean;
   onClick?: () => void;
+}
+
+interface Community {
+  name: string;
+  handle: string;
+  avatar: string;
+  description: string;
+  members: string[];
+  isVerified: boolean;
 }
 
 const SidebarLink = ({
@@ -56,6 +66,8 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const { data: session } = useSession();
+  const [userCommunities, setUserCommunities] = useState<Community[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -71,6 +83,27 @@ export default function Sidebar() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  useEffect(() => {
+    const fetchUserCommunities = async () => {
+      if (!session?.user) return;
+      
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/communities/user');
+        if (response.ok) {
+          const data = await response.json();
+          setUserCommunities(data);
+        }
+      } catch (error) {
+        console.error('Error fetching user communities:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserCommunities();
+  }, [session]);
 
   const closeSidebar = () => {
     if (isMobile) {
@@ -145,30 +178,29 @@ export default function Sidebar() {
             <Separator className="my-6" />
             <div className="text-sm font-medium">Your Communities</div>
             <div className="mt-3 flex flex-col gap-1">
-              <SidebarLink
-                href="/communities/tech-talks"
-                icon={<span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900 dark:text-blue-200">TT</span>}
-                label="TechTalks"
-                active={pathname === "/communities/tech-talks"}
-                collapsed={isCollapsed}
-                onClick={closeSidebar}
-              />
-              <SidebarLink
-                href="/communities/art-collective"
-                icon={<span className="flex h-5 w-5 items-center justify-center rounded-md bg-purple-100 text-xs font-semibold text-purple-700 dark:bg-purple-900 dark:text-purple-200">AC</span>}
-                label="ArtCollective"
-                active={pathname === "/communities/art-collective"}
-                collapsed={isCollapsed}
-                onClick={closeSidebar}
-              />
-              <SidebarLink
-                href="/communities/fitness-hub"
-                icon={<span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900 dark:text-green-200">FH</span>}
-                label="FitnessHub"
-                active={pathname === "/communities/fitness-hub"}
-                collapsed={isCollapsed}
-                onClick={closeSidebar}
-              />
+              {isLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : userCommunities.length > 0 ? (
+                userCommunities.map((community) => (
+                  <SidebarLink
+                    key={community.handle}
+                    href={`/communities/${community.handle}`}
+                    icon={
+                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                        {community.name.substring(0, 2)}
+                      </span>
+                    }
+                    label={community.name}
+                    active={pathname === `/communities/${community.handle}`}
+                    collapsed={isCollapsed}
+                    onClick={closeSidebar}
+                  />
+                ))
+              ) : (
+                <p className="py-2 text-sm text-muted-foreground">No communities yet</p>
+              )}
             </div>
           </>
         )}

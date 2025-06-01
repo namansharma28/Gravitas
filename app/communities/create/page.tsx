@@ -4,7 +4,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { ArrowRight, Upload } from "lucide-react";
+import { ArrowRight, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,11 +20,11 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -52,7 +52,10 @@ const formSchema = z.object({
 
 export default function CreateCommunityPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -65,20 +68,72 @@ export default function CreateCommunityPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: "Community Created",
-      description: `Successfully created @${values.handle}`,
-    });
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!avatarPreview || !bannerPreview) {
+      toast({
+        title: "Missing Images",
+        description: "Please upload both a banner and an avatar image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/communities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...values,
+          avatar: avatarPreview,
+          banner: bannerPreview,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create community');
+      }
+
+      const data = await response.json();
+      toast({
+        title: "Community Created",
+        description: `Successfully created @${values.handle}`,
+      });
+      router.push(`/communities/${data.handle}`);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create community. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string);
+        if (type === 'avatar') {
+          setAvatarPreview(e.target?.result as string);
+        } else {
+          setBannerPreview(e.target?.result as string);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -102,50 +157,147 @@ export default function CreateCommunityPage() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="flex flex-col gap-6 md:flex-row">
-                  <div className="flex flex-col items-center md:w-1/3">
-                    <div className="mb-2 text-center">
-                      <FormLabel>Community Avatar</FormLabel>
-                    </div>
-                    <div className="relative mb-4 h-36 w-36 overflow-hidden rounded-full border-2 border-dashed bg-muted/50">
-                      {avatarPreview ? (
-                        <img 
-                          src={avatarPreview} 
-                          alt="Avatar preview" 
-                          className="h-full w-full object-cover" 
-                        />
+                <div className="space-y-4">
+                  <FormItem>
+                    <FormLabel>Community Banner</FormLabel>
+                    <div className="relative aspect-[3/1] w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/50">
+                      {bannerPreview ? (
+                        <>
+                          <img 
+                            src={bannerPreview} 
+                            alt="Banner preview" 
+                            className="h-full w-full object-cover" 
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-2 top-2"
+                            onClick={() => setBannerPreview(null)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
                       ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <Upload className="h-10 w-10 text-muted-foreground" />
-                        </div>
+                        <label className="flex h-full cursor-pointer flex-col items-center justify-center">
+                          <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Upload banner image</span>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleFileChange(e, 'banner')}
+                          />
+                        </label>
                       )}
                     </div>
-                    <label htmlFor="avatar-upload">
-                      <Button variant="outline" size="sm" className="cursor-pointer" type="button">
-                        Choose Image
-                      </Button>
-                      <Input 
-                        id="avatar-upload"
-                        type="file" 
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileChange}
+                  </FormItem>
+
+                  <div className="flex flex-col gap-6 md:flex-row">
+                    <div className="flex flex-col items-center md:w-1/3">
+                      <div className="mb-2 text-center">
+                        <FormLabel>Community Avatar</FormLabel>
+                      </div>
+                      <div className="relative mb-4 h-36 w-36 overflow-hidden rounded-full border-2 border-dashed bg-muted/50">
+                        {avatarPreview ? (
+                          <>
+                            <img 
+                              src={avatarPreview} 
+                              alt="Avatar preview" 
+                              className="h-full w-full object-cover" 
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-1 top-1"
+                              onClick={() => setAvatarPreview(null)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <label className="flex h-full cursor-pointer flex-col items-center justify-center">
+                            <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Upload avatar</span>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleFileChange(e, 'avatar')}
+                            />
+                          </label>
+                        )}
+                      </div>
+                      <p className="mt-2 text-center text-xs text-muted-foreground">
+                        Recommended: 400x400px JPG, PNG
+                      </p>
+                    </div>
+
+                    <div className="space-y-4 md:w-2/3">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Community Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Tech Enthusiasts" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </label>
-                    <p className="mt-2 text-center text-xs text-muted-foreground">
-                      Recommended: 400x400px JPG, PNG
-                    </p>
+
+                      <FormField
+                        control={form.control}
+                        name="handle"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Community Handle</FormLabel>
+                            <div className="flex items-center">
+                              <span className="mr-1 text-muted-foreground">@</span>
+                              <FormControl>
+                                <Input placeholder="tech-enthusiasts" {...field} />
+                              </FormControl>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              This will be your unique identifier. Only lowercase letters, numbers, and hyphens.
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-4 md:w-2/3">
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Tell people what your community is about..."
+                            className="min-h-[120px] resize-y"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <FormField
                       control={form.control}
-                      name="name"
+                      name="website"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Community Name</FormLabel>
+                          <FormLabel>Website (optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="Tech Enthusiasts" {...field} />
+                            <Input placeholder="https://example.com" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -154,78 +306,37 @@ export default function CreateCommunityPage() {
 
                     <FormField
                       control={form.control}
-                      name="handle"
+                      name="location"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Community Handle</FormLabel>
-                          <div className="flex items-center">
-                            <span className="mr-1 text-muted-foreground">@</span>
-                            <FormControl>
-                              <Input placeholder="tech-enthusiasts" {...field} />
-                            </FormControl>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            This will be your unique identifier. Only lowercase letters, numbers, and hyphens.
-                          </p>
+                          <FormLabel>Location (optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="San Francisco, CA" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                </div>
 
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Tell people what your community is about..."
-                          className="min-h-[120px] resize-y"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="website"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Website (optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <Button 
+                    type="submit" 
+                    className="w-full gap-1"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                        <span>Creating Community...</span>
+                      </div>
+                    ) : (
+                      <>
+                        Create Community
+                        <ArrowRight size={16} />
+                      </>
                     )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location (optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="San Francisco, CA" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  </Button>
                 </div>
-
-                <Button type="submit" className="w-full gap-1">
-                  Create Community
-                  <ArrowRight size={16} />
-                </Button>
               </form>
             </Form>
           </CardContent>

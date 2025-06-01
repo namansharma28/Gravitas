@@ -62,8 +62,8 @@ export default function SignUpPage() {
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
             <p className="text-lg">
-              "Join our vibrant community of event organizers and enthusiasts. 
-              Create, discover, and connect through meaningful experiences."
+              Join our vibrant community of event organizers and enthusiasts. 
+              Create, discover, and connect through meaningful experiences.
             </p>
             <footer className="text-sm">Mike Thompson, Event Coordinator</footer>
           </blockquote>

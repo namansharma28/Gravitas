@@ -9,6 +9,9 @@ const options = {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
+  connectTimeoutMS: 10000,
+  retryWrites: true,
+  retryReads: true,
 };
 
 let client;
@@ -34,7 +37,20 @@ if (process.env.NODE_ENV === "development") {
 
 // Log connection status
 clientPromise
-  .then(() => console.log("MongoDB connected successfully"))
+  .then(() => {
+    console.log("MongoDB connected successfully");
+    // Initialize collections if they don't exist
+    clientPromise.then(async (client) => {
+      const db = client.db('gravitas');
+      const collections = await db.listCollections().toArray();
+      const collectionNames = collections.map(c => c.name);
+      
+      if (!collectionNames.includes('communities')) {
+        await db.createCollection('communities');
+        console.log('Created communities collection');
+      }
+    });
+  })
   .catch((err) => console.error("MongoDB connection error:", err));
 
 export default clientPromise;
