@@ -185,7 +185,7 @@ export async function DELETE(
     // Remove event from community's events array
     await db.collection('communities').updateOne(
       { _id: new ObjectId(event.communityId) },
-      { $pull: { events: new ObjectId(params.id) } }
+      { $pull: { events: params.id } } as any
     );
 
     return NextResponse.json({ message: 'Event deleted successfully' });

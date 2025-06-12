@@ -127,7 +127,7 @@ export default function CommunityPage({ params }: { params: { handle: string } }
     return (
       <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
         <h1 className="text-3xl font-bold">Community Not Found</h1>
-        <p className="mb-6 text-muted-foreground">The community you're looking for doesn't exist.</p>
+        <p className="mb-6 text-muted-foreground">The community you&apos;re looking for doesn&apos;t exist.</p>
         <Button asChild>
           <Link href="/explore">Explore Communities</Link>
         </Button>
@@ -214,7 +214,7 @@ export default function CommunityPage({ params }: { params: { handle: string } }
                 </Card>
               ) : (
                 <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">This community hasn't posted any updates yet.</p>
+                  <p className="text-muted-foreground">This community hasn&apos;t posted any updates yet.</p>
                   {userPermissions.canCreateUpdates && (
                     <Button className="mt-4">
                       <Plus className="mr-2 h-4 w-4" /> Create Update
