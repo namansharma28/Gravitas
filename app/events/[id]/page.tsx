@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Calendar, Clock, MapPin, Users, Share2, ArrowLeft, Pencil, Plus, FileText, Mail, User } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Share2, ArrowLeft, Pencil, Plus, FileText, Mail, User, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,8 +12,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
-import { mockFeedItems } from "@/lib/mock-data";
-import FeedCard from "@/components/feed/feed-card";
+import UpdateCard from "@/components/events/update-card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Event {
   id: string;
@@ -24,6 +34,7 @@ interface Event {
   location: string;
   capacity: number;
   image: string;
+  creatorId: string;
   community: {
     id: string;
     name: string;
@@ -32,6 +43,33 @@ interface Event {
   };
   attendees: string[];
   interested: string[];
+  userPermissions: {
+    isMember: boolean;
+    isAdmin: boolean;
+    isCreator: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
+    canCreateForms: boolean;
+    canCreateUpdates: boolean;
+  };
+}
+
+interface Update {
+  id: string;
+  title: string;
+  content: string;
+  visibility: 'everyone' | 'members';
+  media: any[];
+  documents: any[];
+  attachedForm: any;
+  community: {
+    id: string;
+    name: string;
+    handle: string;
+    avatar: string;
+  };
+  comments: any[];
+  createdAt: string;
 }
 
 export default function EventPage({ params }: { params: { id: string } }) {
@@ -39,17 +77,27 @@ export default function EventPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { toast } = useToast();
   const [event, setEvent] = useState<Event | null>(null);
+  const [updates, setUpdates] = useState<Update[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const fetchEvent = async () => {
+    const fetchEventData = async () => {
       try {
-        const response = await fetch(`/api/events/${params.id}`);
-        if (!response.ok) {
+        // Fetch event details
+        const eventResponse = await fetch(`/api/events/${params.id}`);
+        if (!eventResponse.ok) {
           throw new Error('Failed to fetch event');
         }
-        const data = await response.json();
-        setEvent(data);
+        const eventData = await eventResponse.json();
+        setEvent(eventData);
+
+        // Fetch updates
+        const updatesResponse = await fetch(`/api/events/${params.id}/updates`);
+        if (updatesResponse.ok) {
+          const updatesData = await updatesResponse.json();
+          setUpdates(updatesData);
+        }
       } catch (error) {
         toast({
           title: "Error",
@@ -61,8 +109,36 @@ export default function EventPage({ params }: { params: { id: string } }) {
       }
     };
 
-    fetchEvent();
+    fetchEventData();
   }, [params.id, toast]);
+
+  const handleDeleteEvent = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/events/${params.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete event');
+      }
+
+      toast({
+        title: "Event Deleted",
+        description: "The event has been deleted successfully.",
+      });
+      router.push(`/communities/${event?.community.handle}`);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete event. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -84,13 +160,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
     );
   }
 
-  // Get updates related to this event
-  const eventUpdates = mockFeedItems.filter(item => 
-    item.type === "update" && item.eventId === event.id
-  );
-
-  // Check if user is a member of the community (in a real app, this would be a proper check)
-  const isCommunityMember = session?.user?.id ? true : false;
+  const { userPermissions } = event;
 
   return (
     <div className="container mx-auto pb-16">
@@ -126,20 +196,58 @@ export default function EventPage({ params }: { params: { id: string } }) {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          {/* Admin Controls */}
-          {isCommunityMember && (
+          {/* Admin/Member Controls */}
+          {userPermissions.isMember && (
             <div className="flex flex-wrap gap-3">
-              <Button className="gap-2">
-                <Pencil size={16} /> Edit Event
-              </Button>
-              <Button className="gap-2">
-                <Plus size={16} /> Create Update
-              </Button>
-              <Button asChild className="gap-2">
-                <Link href={`/events/${event.id}/forms`}>
-                  <FileText size={16} /> Forms
-                </Link>
-              </Button>
+              {userPermissions.canEdit && (
+                <Button className="gap-2" asChild>
+                  <Link href={`/events/${event.id}/edit`}>
+                    <Pencil size={16} /> Edit Event
+                  </Link>
+                </Button>
+              )}
+              {userPermissions.canCreateUpdates && (
+                <Button className="gap-2" asChild>
+                  <Link href={`/events/${event.id}/updates/create`}>
+                    <Plus size={16} /> Create Update
+                  </Link>
+                </Button>
+              )}
+              {userPermissions.canCreateForms && (
+                <Button asChild className="gap-2">
+                  <Link href={`/events/${event.id}/forms`}>
+                    <FileText size={16} /> Forms
+                  </Link>
+                </Button>
+              )}
+              {userPermissions.canDelete && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="gap-2">
+                      <Trash2 size={16} /> Delete Event
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the event
+                        and all associated data including forms and responses.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteEvent}
+                        disabled={isDeleting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {isDeleting ? "Deleting..." : "Delete Event"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           )}
 
@@ -186,70 +294,35 @@ export default function EventPage({ params }: { params: { id: string } }) {
           </Card>
 
           <Tabs defaultValue="updates" className="w-full">
-            <TabsList className="mb-4 grid w-full grid-cols-2">
+            <TabsList className="mb-4 grid w-full grid-cols-1">
               <TabsTrigger value="updates">Updates</TabsTrigger>
-              <TabsTrigger value="discussion">Discussion</TabsTrigger>
             </TabsList>
             
             <TabsContent value="updates" className="mt-0 space-y-4">
-              {eventUpdates.length > 0 ? (
-                eventUpdates.map(update => (
-                  <FeedCard key={update.id} item={update} />
+              {updates.length > 0 ? (
+                updates.map(update => (
+                  <UpdateCard 
+                    key={update.id} 
+                    update={update} 
+                    eventId={event.id}
+                    userPermissions={userPermissions}
+                  />
                 ))
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <p className="text-muted-foreground">No updates for this event yet.</p>
+                    {userPermissions.canCreateUpdates && (
+                      <Button className="mt-4" asChild>
+                        <Link href={`/events/${event.id}/updates/create`}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create First Update
+                        </Link>
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
-            </TabsContent>
-            
-            <TabsContent value="discussion" className="mt-0">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="mb-4 space-y-2">
-                    <h3 className="text-lg font-medium">Discussion</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Join the conversation about this event.
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="rounded-lg border p-4">
-                      <div className="mb-2 flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src="https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg" />
-                          <AvatarFallback>RB</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">Rebecca Brown</p>
-                          <p className="text-xs text-muted-foreground">2 days ago</p>
-                        </div>
-                      </div>
-                      <p className="text-sm">
-                        Will this workshop cover Next.js 14 features? I&apos;m particularly interested in the new data fetching methods.
-                      </p>
-                    </div>
-                    
-                    <div className="rounded-lg border p-4">
-                      <div className="mb-2 flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src="https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg" />
-                          <AvatarFallback>MT</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">Mike Thompson</p>
-                          <p className="text-xs text-muted-foreground">1 day ago</p>
-                        </div>
-                      </div>
-                      <p className="text-sm">
-                        Yes, we&apos;ll cover the latest Next.js features, including the new app router and data fetching patterns. Looking forward to seeing you there!
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </div>
@@ -262,10 +335,23 @@ export default function EventPage({ params }: { params: { id: string } }) {
                 <Badge variant="outline" className="border-green-300 text-green-600 dark:border-green-800 dark:text-green-400">Free</Badge>
               </div>
               <div className="mt-4 space-y-4">
-                <Button className="w-full" size="lg">RSVP Now</Button>
-                <Button variant="outline" className="w-full" size="lg">
-                  <Share2 className="mr-2 h-4 w-4" /> Share
-                </Button>
+                {session ? (
+                  <>
+                    <Button className="w-full" size="lg">RSVP Now</Button>
+                    <Button variant="outline" className="w-full" size="lg">
+                      <Share2 className="mr-2 h-4 w-4" /> Share
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button className="w-full" size="lg" asChild>
+                      <Link href="/auth/signin">Sign in to RSVP</Link>
+                    </Button>
+                    <Button variant="outline" className="w-full" size="lg">
+                      <Share2 className="mr-2 h-4 w-4" /> Share
+                    </Button>
+                  </>
+                )}
               </div>
               <Separator className="my-4" />
               <div className="mt-2 space-y-2">

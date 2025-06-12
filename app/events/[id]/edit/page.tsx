@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,8 +26,6 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -40,10 +38,9 @@ const formSchema = z.object({
   }).max(1000, {
     message: "Description must not exceed 1000 characters."
   }),
-  startDate: z.string().min(1, {
-    message: "Please select a start date."
+  date: z.string().min(1, {
+    message: "Please select a date."
   }),
-  endDate: z.string().optional(),
   time: z.string().min(1, {
     message: "Please select a time."
   }),
@@ -58,30 +55,91 @@ const formSchema = z.object({
     message: "Capacity must not exceed 10000."
   }),
   image: z.string().optional(),
-  isMultiDay: z.boolean().default(false),
 });
 
-export default function CreateEventPage({ params }: { params: { handle: string } }) {
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  capacity: number;
+  image?: string;
+  community: {
+    id: string;
+    name: string;
+    handle: string;
+    avatar: string;
+  };
+  userPermissions: {
+    canEdit: boolean;
+  };
+}
+
+export default function EditEventPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [event, setEvent] = useState<Event | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isMultiDay, setIsMultiDay] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
-      startDate: "",
-      endDate: "",
+      date: "",
       time: "",
       location: "",
       capacity: 100,
       image: "",
-      isMultiDay: false,
     },
   });
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`/api/events/${params.id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch event');
+        }
+        const data = await response.json();
+        
+        if (!data.userPermissions.canEdit) {
+          toast({
+            title: "Unauthorized",
+            description: "You don't have permission to edit this event",
+            variant: "destructive",
+          });
+          router.push(`/events/${params.id}`);
+          return;
+        }
+
+        setEvent(data);
+        setImagePreview(data.image);
+        form.reset({
+          title: data.title,
+          description: data.description,
+          date: data.date,
+          time: data.time,
+          location: data.location,
+          capacity: data.capacity,
+          image: data.image || "",
+        });
+      } catch (error) {
+        console.error('Error fetching event:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load event data",
+          variant: "destructive",
+        });
+        router.push(`/events/${params.id}`);
+      }
+    };
+
+    fetchEvent();
+  }, [params.id, form, toast, router]);
 
   const handleImageUpload = async (file: File) => {
     try {
@@ -136,41 +194,28 @@ export default function CreateEventPage({ params }: { params: { handle: string }
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // Prepare the data for submission
-      const eventData = {
-        title: values.title,
-        description: values.description,
-        date: values.startDate,
-        endDate: values.isMultiDay ? values.endDate : undefined,
-        time: values.time,
-        location: values.location,
-        capacity: values.capacity,
-        image: values.image,
-        isMultiDay: values.isMultiDay,
-      };
-
-      const response = await fetch(`/api/communities/${params.handle}/events`, {
-        method: 'POST',
+      const response = await fetch(`/api/events/${params.id}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(eventData),
+        body: JSON.stringify(values),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create event');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update event');
       }
 
-      const data = await response.json();
       toast({
-        title: "Event Created",
-        description: "Your event has been created successfully.",
+        title: "Event Updated",
+        description: "Your event has been updated successfully.",
       });
-      router.push(`/communities/${params.handle}`);
-    } catch (error) {
+      router.push(`/events/${params.id}`);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to create event. Please try again.",
+        description: error.message || "Failed to update event. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -178,17 +223,25 @@ export default function CreateEventPage({ params }: { params: { handle: string }
     }
   }
 
+  if (!event) {
+    return (
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
         <Button variant="ghost" className="mb-4" asChild>
-          <Link href={`/communities/${params.handle}`}>
+          <Link href={`/events/${params.id}`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Community
+            Back to Event
           </Link>
         </Button>
-        <h1 className="text-4xl font-bold tracking-tight">Create Event</h1>
-        <p className="text-muted-foreground">Create a new event for your community</p>
+        <h1 className="text-4xl font-bold tracking-tight">Edit Event</h1>
+        <p className="text-muted-foreground">Update your event details</p>
       </div>
 
       <div className="mx-auto max-w-2xl">
@@ -196,7 +249,7 @@ export default function CreateEventPage({ params }: { params: { handle: string }
           <CardHeader>
             <CardTitle>Event Details</CardTitle>
             <CardDescription>
-              Fill out the information below to create your event.
+              Update the information below to modify your event.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -234,97 +287,40 @@ export default function CreateEventPage({ params }: { params: { handle: string }
                   )}
                 />
 
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isMultiDay"
-                      checked={isMultiDay}
-                      onCheckedChange={(checked) => {
-                        setIsMultiDay(!!checked);
-                        form.setValue('isMultiDay', !!checked);
-                        if (!checked) {
-                          form.setValue('endDate', '');
-                        }
-                      }}
-                    />
-                    <Label htmlFor="isMultiDay">Multi-day event</Label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="startDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{isMultiDay ? 'Start Date' : 'Date'}</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <CalendarDays className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input type="date" className="pl-10" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {isMultiDay && (
-                      <FormField
-                        control={form.control}
-                        name="endDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>End Date</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <CalendarDays className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input type="date" className="pl-10" {...field} />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <CalendarDays className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input type="date" className="pl-10" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
+                  />
 
-                    {!isMultiDay && (
-                      <FormField
-                        control={form.control}
-                        name="time"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Time</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input type="time" className="pl-10" {...field} />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  <FormField
+                    control={form.control}
+                    name="time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Time</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input type="time" className="pl-10" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
-
-                  {isMultiDay && (
-                    <FormField
-                      control={form.control}
-                      name="time"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Start Time</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input type="time" className="pl-10" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
+                  />
                 </div>
 
                 <FormField
@@ -424,7 +420,7 @@ export default function CreateEventPage({ params }: { params: { handle: string }
                 />
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating Event..." : "Create Event"}
+                  {isLoading ? "Updating Event..." : "Update Event"}
                 </Button>
               </form>
             </Form>

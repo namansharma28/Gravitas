@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Edit, Share2, Users } from "lucide-react";
+import { CalendarDays, Edit, Share2, Users, UserPlus, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CommunityHeaderProps {
@@ -17,38 +17,29 @@ interface CommunityHeaderProps {
     description: string;
     banner: string;
     avatar: string;
-    admins: string[];
-    members: string[];
+    membersCount: number;
+    followersCount: number;
     isVerified: boolean;
+  };
+  userPermissions: {
+    isVisitor: boolean;
+    isUser: boolean;
+    isMember: boolean;
+    isFollower: boolean;
+    isAdmin: boolean;
+    canEdit: boolean;
+    canCreateEvents: boolean;
+    canFollow: boolean;
   };
 }
 
-export default function CommunityHeader({ community }: CommunityHeaderProps) {
+export default function CommunityHeader({ community, userPermissions }: CommunityHeaderProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const { toast } = useToast();
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(userPermissions.isFollower);
   const [isLoading, setIsLoading] = useState(false);
-
-  const isMember = session?.user && community.members.includes(session.user.id);
-  const isAdmin = session?.user && community.admins.includes(session.user.id);
-
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (!session?.user) return;
-      try {
-        const response = await fetch(`/api/communities/${community.handle}/follow`);
-        if (response.ok) {
-          const data = await response.json();
-          setIsFollowing(data.following);
-        }
-      } catch (error) {
-        console.error('Error checking follow status:', error);
-      }
-    };
-
-    checkFollowStatus();
-  }, [session, community.handle]);
+  const [followersCount, setFollowersCount] = useState(community.followersCount);
 
   const handleFollow = async () => {
     if (!session) {
@@ -65,6 +56,7 @@ export default function CommunityHeader({ community }: CommunityHeaderProps) {
       if (response.ok) {
         const data = await response.json();
         setIsFollowing(data.following);
+        setFollowersCount(prev => data.following ? prev + 1 : prev - 1);
         toast({
           title: data.following ? "Following community" : "Unfollowed community",
           description: data.following 
@@ -81,6 +73,66 @@ export default function CommunityHeader({ community }: CommunityHeaderProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getActionButtons = () => {
+    if (userPermissions.isVisitor) {
+      return (
+        <div className="flex gap-2">
+          <Button onClick={() => router.push('/auth/signin')}>
+            Sign in to Follow
+          </Button>
+        </div>
+      );
+    }
+
+    if (userPermissions.isAdmin) {
+      return (
+        <div className="flex gap-2">
+          <Button onClick={() => router.push(`/communities/${community.handle}/edit`)}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Community
+          </Button>
+          <Button onClick={() => router.push(`/communities/${community.handle}/events/create`)}>
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Create Event
+          </Button>
+          <Button variant="outline">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Manage Members
+          </Button>
+        </div>
+      );
+    }
+
+    if (userPermissions.isMember) {
+      return (
+        <div className="flex gap-2">
+          <Button onClick={() => router.push(`/communities/${community.handle}/events/create`)}>
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Create Event
+          </Button>
+          <Badge variant="secondary" className="px-3 py-1">
+            <Users className="mr-1 h-3 w-3" />
+            Member
+          </Badge>
+        </div>
+      );
+    }
+
+    // Regular user (not member)
+    return (
+      <div className="flex gap-2">
+        <Button 
+          onClick={handleFollow}
+          disabled={isLoading}
+          variant={isFollowing ? "default" : "outline"}
+        >
+          <Heart className={`mr-2 h-4 w-4 ${isFollowing ? 'fill-current' : ''}`} />
+          {isFollowing ? "Following" : "Follow"}
+        </Button>
+      </div>
+    );
   };
 
   return (
@@ -120,7 +172,11 @@ export default function CommunityHeader({ community }: CommunityHeaderProps) {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
-            <span>{community.members.length} members</span>
+            <span>{community.membersCount} members</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Heart className="h-4 w-4" />
+            <span>{followersCount} followers</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <CalendarDays className="h-4 w-4" />
@@ -128,28 +184,8 @@ export default function CommunityHeader({ community }: CommunityHeaderProps) {
           </div>
         </div>
 
-        <div className="flex gap-2">
-          {isAdmin ? (
-            <>
-              <Button onClick={() => router.push(`/communities/${community.handle}/edit`)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Community
-              </Button>
-              <Button onClick={() => router.push(`/communities/${community.handle}/events/create`)}>
-                <CalendarDays className="mr-2 h-4 w-4" />
-                Create Event
-              </Button>
-            </>
-          ) : !isMember && (
-            <Button 
-              onClick={handleFollow}
-              disabled={isLoading}
-              variant={isFollowing ? "default" : "outline"}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              {isFollowing ? "Following" : "Follow"}
-            </Button>
-          )}
+        <div className="flex items-center gap-2">
+          {getActionButtons()}
           <Button variant="outline" size="icon">
             <Share2 className="h-4 w-4" />
           </Button>

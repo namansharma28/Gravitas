@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -41,37 +41,23 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function CreateFormPage({ params }: { params: { id: string } }) {
+export default function EditFormPage({ 
+  params 
+}: { 
+  params: { id: string; formId: string } 
+}) {
   const { data: session } = useSession();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
-      fields: [
-        {
-          id: crypto.randomUUID(),
-          label: "Name",
-          type: "text",
-          required: true,
-          options: [],
-          fileTypes: [],
-          maxFileSize: 5,
-        },
-        {
-          id: crypto.randomUUID(),
-          label: "Email",
-          type: "email",
-          required: true,
-          options: [],
-          fileTypes: [],
-          maxFileSize: 5,
-        },
-      ],
+      fields: [],
     },
   });
 
@@ -79,6 +65,40 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
     control: form.control,
     name: "fields",
   });
+
+  useEffect(() => {
+    const fetchForm = async () => {
+      try {
+        const response = await fetch(`/api/events/${params.id}/forms/${params.formId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch form");
+        }
+        const data = await response.json();
+        
+        form.reset({
+          title: data.title,
+          description: data.description,
+          fields: data.fields.map((field: any) => ({
+            ...field,
+            options: field.options || [],
+            fileTypes: field.fileTypes || [],
+            maxFileSize: field.maxFileSize || 5,
+          })),
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load form",
+          variant: "destructive",
+        });
+        router.push(`/events/${params.id}/forms`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchForm();
+  }, [params.id, params.formId, form, toast, router]);
 
   const addOption = (fieldIndex: number) => {
     const field = fields[fieldIndex];
@@ -164,7 +184,7 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
     if (!session?.user) {
       toast({
         title: "Error",
-        description: "You must be logged in to create a form",
+        description: "You must be logged in to edit a form",
         variant: "destructive",
       });
       return;
@@ -194,31 +214,28 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/events/${params.id}/forms`, {
-        method: "POST",
+      const response = await fetch(`/api/events/${params.id}/forms/${params.formId}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...data,
-          eventId: params.id,
-        }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create form");
+        throw new Error("Failed to update form");
       }
 
       toast({
         title: "Success",
-        description: "Form created successfully",
+        description: "Form updated successfully",
       });
 
       router.push(`/events/${params.id}/forms`);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create form",
+        description: "Failed to update form",
         variant: "destructive",
       });
     } finally {
@@ -239,6 +256,16 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
     { value: "rar", label: "RAR" },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="flex items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
@@ -248,9 +275,9 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
             Back to Forms
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Create Form</h1>
+        <h1 className="text-3xl font-bold">Edit Form</h1>
         <p className="mt-2 text-muted-foreground">
-          Create a new registration form for your event
+          Update your registration form
         </p>
       </div>
 
@@ -492,7 +519,7 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create Form"}
+            {isSubmitting ? "Updating..." : "Update Form"}
           </Button>
         </div>
       </form>

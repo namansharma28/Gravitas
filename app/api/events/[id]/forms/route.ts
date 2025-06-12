@@ -14,6 +14,7 @@ interface Form extends Document {
     label: string;
     type: string;
     required: boolean;
+    options?: string[];
   }[];
   responses: FormResponse[];
   createdAt: Date;
@@ -23,7 +24,7 @@ interface Form extends Document {
 interface FormResponse extends Document {
   _id: ObjectId;
   formId: string;
-  userId: string;
+  userId: ObjectId;
   user?: {
     name: string;
     email: string;
@@ -50,9 +51,43 @@ export async function POST(request: Request) {
     const data = await request.json();
     const { title, description, fields, eventId } = data;
 
+    // Validate fields with options
+    for (const field of fields) {
+      if ((field.type === 'select' || field.type === 'checkbox') && (!field.options || field.options.length === 0)) {
+        return NextResponse.json(
+          { error: `Field "${field.label}" requires at least one option` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Connect to MongoDB
     const client = await clientPromise;
     const db = client.db('gravitas');
+
+    // Verify event exists and user has permission
+    const event = await db.collection('events').findOne({ _id: new ObjectId(eventId) });
+    if (!event) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+
+    // Get community to check permissions
+    const community = await db.collection('communities').findOne({ 
+      _id: new ObjectId(event.communityId) 
+    });
+
+    if (!community) {
+      return NextResponse.json({ error: 'Community not found' }, { status: 404 });
+    }
+
+    // Check if user can create forms
+    const isAdmin = community.admins.includes(session.user.id);
+    const isMember = community.members.includes(session.user.id);
+    const isCreator = event.creatorId === session.user.id;
+
+    if (!isAdmin && !isMember && !isCreator) {
+      return NextResponse.json({ error: 'Not authorized to create forms' }, { status: 403 });
+    }
 
     // Create new form
     const form = await db.collection('forms').insertOne({
@@ -136,8 +171,10 @@ export async function GET(
         {
           $lookup: {
             from: "users",
-            localField: "responses.userId",
-            foreignField: "_id",
+            let: { userIds: "$responses.userId" },
+            pipeline: [
+              { $match: { $expr: { $in: ["$_id", "$$userIds"] } } }
+            ],
             as: "responseUsers"
           }
         }
@@ -152,17 +189,20 @@ export async function GET(
       title: form.title,
       description: form.description,
       fields: form.fields,
-      responses: form.responses.map((response) => ({
-        id: response._id.toString(),
-        formId: response.formId,
-        userId: response.userId,
-        user: {
-          name: response.user?.name || "Unknown User",
-          email: response.user?.email || "No email",
-        },
-        answers: response.answers,
-        createdAt: response.createdAt,
-      })),
+      responses: form.responses.map((response) => {
+        const user = form.responseUsers.find(u => u._id.toString() === response.userId.toString());
+        return {
+          id: response._id.toString(),
+          formId: response.formId,
+          userId: response.userId.toString(),
+          user: {
+            name: user?.name || "Unknown User",
+            email: user?.email || "No email",
+          },
+          answers: response.answers,
+          createdAt: response.createdAt,
+        };
+      }),
       createdAt: form.createdAt,
     }));
 
@@ -208,7 +248,7 @@ export async function DELETE(
       formId: formId,
     });
 
-    return NextResponse.json(null, { status: 204 });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[FORMS_DELETE] Error:", error);
     return NextResponse.json(

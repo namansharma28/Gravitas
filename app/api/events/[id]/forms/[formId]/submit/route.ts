@@ -27,19 +27,39 @@ export async function POST(
       );
     }
 
+    if (!ObjectId.isValid(params.formId) || !ObjectId.isValid(params.id)) {
+      return NextResponse.json(
+        { error: "Invalid form ID or event ID" },
+        { status: 400 }
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db("gravitas");
 
     // Verify that the form exists and belongs to the event
     const form = await db.collection("forms").findOne({
       _id: new ObjectId(params.formId),
-      eventId: new ObjectId(params.id),
+      eventId: params.id,
     });
 
     if (!form) {
       return NextResponse.json(
         { error: "Form not found" },
         { status: 404 }
+      );
+    }
+
+    // Check if user already submitted this form
+    const existingResponse = await db.collection("formResponses").findOne({
+      formId: new ObjectId(params.formId),
+      userId: new ObjectId(session.user.id),
+    });
+
+    if (existingResponse) {
+      return NextResponse.json(
+        { error: "You have already submitted this form" },
+        { status: 400 }
       );
     }
 
@@ -64,4 +84,4 @@ export async function POST(
       { status: 500 }
     );
   }
-} 
+}

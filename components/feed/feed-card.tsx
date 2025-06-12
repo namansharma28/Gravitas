@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-import { CalendarDays, Heart, MessageSquare, Share2 } from "lucide-react";
+import { CalendarDays, Share2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -83,15 +83,7 @@ export default function FeedCard({ item }: FeedCardProps) {
       </CardContent>
 
       <CardFooter className="border-t bg-muted/20 p-2 px-4">
-        <div className="flex w-full items-center justify-between">
-          <Button variant="ghost" size="sm" className="h-8 gap-1 text-muted-foreground">
-            <Heart size={16} /> 
-            <span className="text-xs">{item.likes}</span>
-          </Button>
-          <Button variant="ghost" size="sm" className="h-8 gap-1 text-muted-foreground">
-            <MessageSquare size={16} /> 
-            <span className="text-xs">{item.comments}</span>
-          </Button>
+        <div className="flex w-full items-center justify-end">
           <Button variant="ghost" size="sm" className="h-8 text-muted-foreground">
             <Share2 size={16} />
           </Button>

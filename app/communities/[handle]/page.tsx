@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Globe, MapPin, Calendar, Clock, Users, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CommunityHeader from "@/components/communities/community-header";
+import AddMemberDialog from "@/components/communities/add-member-dialog";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
@@ -21,10 +22,25 @@ interface Community {
   avatar: string;
   website?: string;
   location?: string;
-  members: string[];
-  admins: string[];
+  membersCount: number;
+  followersCount: number;
   isVerified: boolean;
   createdAt: string;
+}
+
+interface UserPermissions {
+  isVisitor: boolean;
+  isUser: boolean;
+  isMember: boolean;
+  isFollower: boolean;
+  isAdmin: boolean;
+  canEdit: boolean;
+  canCreateEvents: boolean;
+  canCreateForms: boolean;
+  canCreateUpdates: boolean;
+  canManageMembers: boolean;
+  canViewMembers: boolean;
+  canFollow: boolean;
 }
 
 interface Member {
@@ -52,48 +68,51 @@ export default function CommunityPage({ params }: { params: { handle: string } }
   const { data: session } = useSession();
   const { toast } = useToast();
   const [community, setCommunity] = useState<Community | null>(null);
+  const [userPermissions, setUserPermissions] = useState<UserPermissions | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCommunity = async () => {
-      try {
-        const response = await fetch(`/api/communities/${params.handle}`);
-        if (response.ok) {
-          const data = await response.json();
-          setCommunity(data);
-          
-          // Fetch member details
-          const membersResponse = await fetch(`/api/communities/${params.handle}/members`);
-          if (membersResponse.ok) {
-            const memberData = await membersResponse.json();
-            setMembers(memberData);
-          }
-
-          // Fetch events
-          const eventsResponse = await fetch(`/api/communities/${params.handle}/events`);
-          if (eventsResponse.ok) {
-            const eventsData = await eventsResponse.json();
-            setEvents(eventsData);
-          }
-        } else {
-          throw new Error('Community not found');
-        }
-      } catch (error) {
-        console.error('Error fetching community:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load community data",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCommunity();
+    fetchCommunityData();
   }, [params.handle, toast]);
+
+  const fetchCommunityData = async () => {
+    try {
+      // Fetch community permissions and data
+      const permissionsResponse = await fetch(`/api/communities/${params.handle}/permissions`);
+      if (permissionsResponse.ok) {
+        const permissionsData = await permissionsResponse.json();
+        setCommunity(permissionsData.community);
+        setUserPermissions(permissionsData.userPermissions);
+      } else {
+        throw new Error('Community not found');
+      }
+
+      // Fetch member details if user has permission
+      const membersResponse = await fetch(`/api/communities/${params.handle}/members`);
+      if (membersResponse.ok) {
+        const memberData = await membersResponse.json();
+        setMembers(memberData);
+      }
+
+      // Fetch events
+      const eventsResponse = await fetch(`/api/communities/${params.handle}/events`);
+      if (eventsResponse.ok) {
+        const eventsData = await eventsResponse.json();
+        setEvents(eventsData);
+      }
+    } catch (error) {
+      console.error('Error fetching community:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load community data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -104,7 +123,7 @@ export default function CommunityPage({ params }: { params: { handle: string } }
     );
   }
 
-  if (!community) {
+  if (!community || !userPermissions) {
     return (
       <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
         <h1 className="text-3xl font-bold">Community Not Found</h1>
@@ -116,12 +135,28 @@ export default function CommunityPage({ params }: { params: { handle: string } }
     );
   }
 
-  const isMember = session?.user && community.members.includes(session.user.id);
-  const isAdmin = session?.user && community.admins.includes(session.user.id);
+  const getTabsList = () => {
+    const tabs = [
+      { value: "feed", label: "Feed" },
+      { value: "events", label: "Events" },
+    ];
+
+    // Only show members tab if user can view members
+    if (userPermissions.canViewMembers) {
+      tabs.push({ value: "members", label: "Members" });
+    }
+
+    // Only show settings tab for members and admins
+    if (userPermissions.isMember || userPermissions.isAdmin) {
+      tabs.push({ value: "settings", label: "Settings" });
+    }
+
+    return tabs;
+  };
 
   return (
     <div className="container mx-auto pb-16">
-      <CommunityHeader community={community} />
+      <CommunityHeader community={community} userPermissions={userPermissions} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
         {community.location && (
@@ -157,20 +192,36 @@ export default function CommunityPage({ params }: { params: { handle: string } }
 
       <Tabs defaultValue="feed" className="mt-6">
         <TabsList className="mb-4 grid w-full grid-cols-4 lg:w-[400px]">
-          <TabsTrigger value="feed">Feed</TabsTrigger>
-          <TabsTrigger value="events">Events</TabsTrigger>
-          <TabsTrigger value="members">Members</TabsTrigger>
-          {(isMember || isAdmin) && (
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          )}
+          {getTabsList().map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="feed" className="mt-0">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-4">
-              <Card className="p-8 text-center">
-                <p className="text-muted-foreground">This community hasn't posted any updates yet.</p>
-              </Card>
+              {userPermissions.isVisitor ? (
+                <Card className="p-8 text-center">
+                  <h3 className="mb-2 text-lg font-semibold">Join the Community</h3>
+                  <p className="mb-4 text-muted-foreground">
+                    Sign in to see updates and interact with this community.
+                  </p>
+                  <Button asChild>
+                    <Link href="/auth/signin">Sign In</Link>
+                  </Button>
+                </Card>
+              ) : (
+                <Card className="p-8 text-center">
+                  <p className="text-muted-foreground">This community hasn't posted any updates yet.</p>
+                  {userPermissions.canCreateUpdates && (
+                    <Button className="mt-4">
+                      <Plus className="mr-2 h-4 w-4" /> Create Update
+                    </Button>
+                  )}
+                </Card>
+              )}
             </div>
             <div className="space-y-6">
               <Card>
@@ -191,7 +242,7 @@ export default function CommunityPage({ params }: { params: { handle: string } }
 
         <TabsContent value="events" className="mt-0">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {(isMember || isAdmin) && (
+            {userPermissions.canCreateEvents && (
               <Card className="p-6">
                 <CardContent className="flex flex-col items-center justify-center gap-4">
                   <Button className="w-full" asChild>
@@ -248,7 +299,7 @@ export default function CommunityPage({ params }: { params: { handle: string } }
             ) : (
               <Card className="p-8 text-center">
                 <p className="text-muted-foreground">No events scheduled yet.</p>
-                {(isMember || isAdmin) && (
+                {userPermissions.canCreateEvents && (
                   <Button className="mt-4" asChild>
                     <Link href={`/communities/${community.handle}/events/create`}>
                       Create Event
@@ -260,38 +311,49 @@ export default function CommunityPage({ params }: { params: { handle: string } }
           </div>
         </TabsContent>
 
-        <TabsContent value="members" className="mt-0">
-          <Card>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {members.map((member) => (
-                  <div key={member.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted">
-                    <Avatar>
-                      <AvatarImage src={member.image} />
-                      <AvatarFallback>
-                        {member.name?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {member.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {member.isAdmin ? "Admin" : "Member"}
-                      </p>
+        {userPermissions.canViewMembers && (
+          <TabsContent value="members" className="mt-0">
+            <Card>
+              <CardContent className="p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Members ({members.length})</h3>
+                  {userPermissions.isAdmin && (
+                    <AddMemberDialog 
+                      communityHandle={community.handle} 
+                      onMemberAdded={fetchCommunityData}
+                    />
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {members.map((member) => (
+                    <div key={member.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted">
+                      <Avatar>
+                        <AvatarImage src={member.image} />
+                        <AvatarFallback>
+                          {member.name?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {member.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {member.isAdmin ? "Admin" : "Member"}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
-        {(isMember || isAdmin) && (
+        {(userPermissions.isMember || userPermissions.isAdmin) && (
           <TabsContent value="settings" className="mt-0">
             <Card>
               <CardContent className="p-6">
-                {isAdmin ? (
+                {userPermissions.isAdmin ? (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Community Settings</h3>
                     <p className="text-sm text-muted-foreground">

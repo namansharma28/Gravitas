@@ -22,6 +22,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Form {
   id: string;
@@ -59,6 +70,7 @@ export default function FormsPage({ params }: { params: { id: string } }) {
   const [forms, setForms] = useState<Form[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedForm, setSelectedForm] = useState<Form | null>(null);
+  const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchForms();
@@ -84,6 +96,7 @@ export default function FormsPage({ params }: { params: { id: string } }) {
   }
 
   async function deleteForm(formId: string) {
+    setDeletingFormId(formId);
     try {
       const response = await fetch(`/api/events/${params.id}/forms/${formId}`, {
         method: "DELETE",
@@ -105,6 +118,8 @@ export default function FormsPage({ params }: { params: { id: string } }) {
         description: "Failed to delete form",
         variant: "destructive",
       });
+    } finally {
+      setDeletingFormId(null);
     }
   }
 
@@ -175,13 +190,36 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                     >
                       <Share2 className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteForm(form.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={deletingFormId === form.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the form
+                            and all associated responses.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteForm(form.id)}
+                            disabled={deletingFormId === form.id}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            {deletingFormId === form.id ? "Deleting..." : "Delete Form"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -198,93 +236,83 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setSelectedForm(form)}
-                  >
-                    <Users className="mr-2 h-4 w-4" /> View Responses
-                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setSelectedForm(form)}
+                      >
+                        <Users className="mr-2 h-4 w-4" /> View Responses
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl">
+                      <DialogHeader>
+                        <DialogTitle>{form.title} - Responses</DialogTitle>
+                      </DialogHeader>
+                      {form.responses.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <Users className="mb-4 h-12 w-12 text-muted-foreground" />
+                          <p className="text-muted-foreground">No responses yet</p>
+                        </div>
+                      ) : (
+                        <div className="max-h-[60vh] overflow-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>User</TableHead>
+                                {form.fields.map((field) => (
+                                  <TableHead key={field.id}>{field.label}</TableHead>
+                                ))}
+                                <TableHead>Submitted</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {form.responses.map((response) => (
+                                <TableRow key={response.id}>
+                                  <TableCell>
+                                    <div>
+                                      <div className="font-medium">
+                                        {response.user.name}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {response.user.email}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  {form.fields.map((field) => {
+                                    const answer = response.answers.find(
+                                      (a) => a.fieldId === field.id
+                                    );
+                                    return (
+                                      <TableCell key={field.id}>
+                                        {answer ? String(answer.value) : "-"}
+                                      </TableCell>
+                                    );
+                                  })}
+                                  <TableCell className="text-muted-foreground">
+                                    {new Date(response.createdAt).toLocaleDateString()}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </DialogContent>
+                  </Dialog>
                   <Button
                     variant="outline"
                     className="flex-1"
                     onClick={() => router.push(`/events/${params.id}/forms/${form.id}/edit`)}
                   >
-                    <Pencil className="mr-2 h-4 w-4" /> Edit Form
+                    <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
-      )}
-
-      {selectedForm && (
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setSelectedForm(null)}
-            >
-              <Users className="mr-2 h-4 w-4" /> View Responses
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>{selectedForm.title} - Responses</DialogTitle>
-            </DialogHeader>
-            {selectedForm.responses.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-                <p className="text-muted-foreground">No responses yet</p>
-              </div>
-            ) : (
-              <div className="max-h-[60vh] overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      {selectedForm.fields.map((field) => (
-                        <TableHead key={field.id}>{field.label}</TableHead>
-                      ))}
-                      <TableHead>Submitted</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedForm.responses.map((response) => (
-                      <TableRow key={response.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {response.user.name}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {response.user.email}
-                            </div>
-                          </div>
-                        </TableCell>
-                        {selectedForm.fields.map((field) => {
-                          const answer = response.answers.find(
-                            (a) => a.fieldId === field.id
-                          );
-                          return (
-                            <TableCell key={field.id}>
-                              {answer ? String(answer.value) : "-"}
-                            </TableCell>
-                          );
-                        })}
-                        <TableCell className="text-muted-foreground">
-                          {new Date(response.createdAt).toLocaleDateString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
       )}
     </div>
   );
