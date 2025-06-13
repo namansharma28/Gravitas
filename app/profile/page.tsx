@@ -111,7 +111,7 @@ export default function ProfilePage() {
 
   if (!session) {
     return (
-      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center">
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
         <h1 className="text-3xl font-bold">Please Sign In</h1>
         <p className="text-muted-foreground mb-4">You need to be signed in to view this page.</p>
         <Button asChild>
@@ -123,19 +123,21 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="mt-4 text-muted-foreground">Loading profile...</p>
       </div>
     );
   }
 
   if (!userProfile) {
     return (
-      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center">
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
         <h1 className="text-3xl font-bold">Profile Not Found</h1>
-        <p className="text-muted-foreground">Unable to load your profile data.</p>
+        <p className="text-muted-foreground mb-4">Unable to load your profile data.</p>
+        <Button asChild>
+          <Link href="/settings">Update Profile</Link>
+        </Button>
       </div>
     );
   }
@@ -146,28 +148,28 @@ export default function ProfilePage() {
   const joinedCommunities = communities.filter(community => community.userRole === 'member');
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-8 px-4">
       <div className="mb-8">
         <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 md:h-64">
-          <div className="absolute inset-x-0 bottom-0 flex items-end p-6">
+          <div className="absolute inset-x-0 bottom-0 flex items-end p-4 md:p-6">
             <div className="relative flex items-end">
-              <Avatar className="h-24 w-24 border-4 border-background">
+              <Avatar className="h-20 w-20 border-4 border-background md:h-24 md:w-24">
                 <AvatarImage src={userProfile.image || ""} />
                 <AvatarFallback>{userProfile.name?.substring(0, 2)}</AvatarFallback>
               </Avatar>
-              <div className="ml-6 pb-3">
-                <h1 className="text-2xl font-bold text-white md:text-3xl">
+              <div className="ml-4 md:ml-6 pb-2 md:pb-3">
+                <h1 className="text-xl font-bold text-white md:text-2xl lg:text-3xl">
                   {userProfile.name}
                 </h1>
-                <p className="text-white/90">{userProfile.email}</p>
+                <p className="text-sm text-white/90 md:text-base">{userProfile.email}</p>
                 {userProfile.bio && (
-                  <p className="text-white/80 mt-1">{userProfile.bio}</p>
+                  <p className="text-sm text-white/80 mt-1 md:text-base">{userProfile.bio}</p>
                 )}
               </div>
             </div>
           </div>
           <div className="absolute top-4 right-4">
-            <Button asChild>
+            <Button asChild size="sm" className="md:size-default">
               <Link href="/settings">
                 <Settings className="mr-2 h-4 w-4" />
                 Edit Profile
@@ -176,45 +178,43 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Users size={16} />
-              <span>{userProfile.stats.followersCount} followers</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Users size={16} />
-              <span>{userProfile.stats.followingCount} following</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <CalendarDays size={16} />
-              <span>Joined {new Date(userProfile.createdAt).toLocaleDateString()}</span>
-            </div>
-            {userProfile.location && (
-              <div className="flex items-center gap-1">
-                <MapPin size={16} />
-                <span>{userProfile.location}</span>
-              </div>
-            )}
-            {userProfile.website && (
-              <div className="flex items-center gap-1">
-                <LinkIcon size={16} />
-                <a 
-                  href={userProfile.website} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="hover:underline"
-                >
-                  {new URL(userProfile.website).hostname}
-                </a>
-              </div>
-            )}
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Users size={16} />
+            <span>{userProfile.stats.followersCount} followers</span>
           </div>
+          <div className="flex items-center gap-1">
+            <Users size={16} />
+            <span>{userProfile.stats.followingCount} following</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <CalendarDays size={16} />
+            <span>Joined {new Date(userProfile.createdAt).toLocaleDateString()}</span>
+          </div>
+          {userProfile.location && (
+            <div className="flex items-center gap-1">
+              <MapPin size={16} />
+              <span>{userProfile.location}</span>
+            </div>
+          )}
+          {userProfile.website && (
+            <div className="flex items-center gap-1">
+              <LinkIcon size={16} />
+              <a 
+                href={userProfile.website} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                {new URL(userProfile.website).hostname}
+              </a>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-4 mb-8 md:grid-cols-4">
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-blue-600">{userProfile.stats.communitiesOwned}</div>
@@ -241,8 +241,8 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="events" className="space-y-6">
-        <TabsList>
+      <Tabs defaultValue="events" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="communities">Communities</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>

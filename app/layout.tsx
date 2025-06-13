@@ -9,9 +9,56 @@ import Navbar from '@/components/layout/navbar';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
+const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
 export const metadata: Metadata = {
-  title: 'Gravitas - Community Event Platform',
-  description: 'Connect with communities, discover events, and engage with content',
+  title: {
+    default: 'Gravitas - Community Event Platform',
+    template: '%s | Gravitas'
+  },
+  description: 'Connect with communities, discover events, and engage with content. Join Gravitas to find and create meaningful community events.',
+  keywords: ['community events', 'event management', 'social platform', 'community engagement', 'event discovery', 'community building'],
+  authors: [{ name: 'Gravitas Team' }],
+  creator: 'Gravitas',
+  publisher: 'Gravitas',
+  metadataBase: new URL(baseUrl),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: baseUrl,
+    title: 'Gravitas - Community Event Platform',
+    description: 'Connect with communities, discover events, and engage with content. Join Gravitas to find and create meaningful community events.',
+    siteName: 'Gravitas',
+    images: [
+      {
+        url: `${baseUrl}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: 'Gravitas - Community Event Platform',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Gravitas - Community Event Platform',
+    description: 'Connect with communities, discover events, and engage with content. Join Gravitas to find and create meaningful community events.',
+    images: [`${baseUrl}/og-image.png`],
+    creator: '@gravitas',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: [
       { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
@@ -32,6 +79,19 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: 'cover',
+  },
+  themeColor: '#ffffff',
+  verification: {
+    google: 'your-google-site-verification',
+    yandex: 'your-yandex-verification',
+  },
+  category: 'social',
 };
 
 export default function RootLayout({
@@ -41,6 +101,40 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Gravitas" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#ffffff" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="manifest" href="/manifest.json" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebApplication',
+              name: 'Gravitas',
+              description: 'A modern community event management platform',
+              url: baseUrl,
+              applicationCategory: 'SocialApplication',
+              operatingSystem: 'Web',
+              offers: {
+                '@type': 'Offer',
+                price: '0',
+                priceCurrency: 'USD'
+              },
+              author: {
+                '@type': 'Organization',
+                name: 'Gravitas',
+                url: baseUrl
+              }
+            })
+          }}
+        />
+      </head>
       <body className={`${inter.variable} font-sans`}>
         <AuthProvider>
           <ThemeProvider

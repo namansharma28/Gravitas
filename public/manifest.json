@@ -7,6 +7,11 @@
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "orientation": "portrait-primary",
+  "categories": ["social", "events", "community"],
+  "dir": "ltr",
+  "lang": "en-US",
+  "prefer_related_applications": false,
+  "scope": "/",
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
@@ -55,6 +60,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Create Event",
+      "short_name": "New Event",
+      "description": "Create a new event",
+      "url": "/events/new",
+      "icons": [{ "src": "/icons/event.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Communities",
+      "short_name": "Communities",
+      "description": "View your communities",
+      "url": "/communities",
+      "icons": [{ "src": "/icons/community.png", "sizes": "192x192" }]
     }
   ]
 } 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bell, Search, X, Menu, CalendarDays, Loader2, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ export default function Navbar() {
   const { data: session } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hasNotifications, setHasNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -59,6 +60,17 @@ export default function Navbar() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Fetch notifications when user is logged in
   useEffect(() => {
@@ -66,6 +78,13 @@ export default function Navbar() {
       fetchNotifications();
     }
   }, [session]);
+
+  // Keep focus on search input
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen, searchResults]);
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -172,7 +191,9 @@ export default function Navbar() {
 
   // Handle search result selection
   const handleSelectSearchResult = (url: string) => {
-    setIsSearchOpen(false);
+    if (isMobile) {
+      setIsSearchOpen(false);
+    }
     setSearchQuery("");
     router.push(url);
   };
@@ -213,169 +234,177 @@ export default function Navbar() {
         </div>
         
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Mobile Search Button */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="md:hidden"
-            onClick={() => setIsSearchOpen(!isSearchOpen)}
-          >
-            {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
-          </Button>
-          
-          {/* Desktop Search */}
-          <div className="relative hidden md:block w-64">
-            <Popover open={searchQuery.length > 1} onOpenChange={() => {}}>
-              <PopoverTrigger asChild>
+          {/* Mobile Search */}
+          <div className="md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setIsSearchOpen(!isSearchOpen);
+                if (!isSearchOpen) {
+                  setSearchQuery("");
+                  setSearchResults([]);
+                }
+              }}
+            >
+              {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+            </Button>
+            
+            {isSearchOpen && (
+              <div className="absolute inset-x-0 top-full mt-1 p-2 bg-background border-b">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
+                    ref={searchInputRef}
                     placeholder="Search events, communities..."
-                    className="pl-8"
+                    className="pl-8 w-full"
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
                 </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-[350px] p-0" align="start">
-                <Command>
-                  <CommandList>
+                {searchQuery.length > 1 && (
+                  <div className="mt-2 max-h-[calc(100vh-200px)] overflow-y-auto rounded-md border bg-popover shadow-md">
                     {isSearching ? (
                       <div className="flex items-center justify-center py-6">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                       </div>
                     ) : searchResults.length > 0 ? (
-                      <>
-                        <CommandGroup heading="Events">
-                          {searchResults
-                            .filter(result => result.type === 'event')
-                            .map(result => (
-                              <CommandItem 
-                                key={result.id}
-                                onSelect={() => handleSelectSearchResult(result.url)}
-                                className="flex items-center gap-2 py-2"
-                              >
-                                <div className="flex items-center gap-2 flex-1">
-                                  <CalendarDays className="h-4 w-4 text-blue-500" />
-                                  <div>
-                                    <p className="text-sm font-medium">{result.title}</p>
-                                    {result.date && (
-                                      <p className="text-xs text-muted-foreground">{result.date}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </CommandItem>
-                            ))}
-                        </CommandGroup>
-                        <CommandGroup heading="Communities">
-                          {searchResults
-                            .filter(result => result.type === 'community')
-                            .map(result => (
-                              <CommandItem 
-                                key={result.id}
-                                onSelect={() => handleSelectSearchResult(result.url)}
-                                className="flex items-center gap-2 py-2"
-                              >
-                                <div className="flex items-center gap-2 flex-1">
-                                  <div 
-                                    className="h-6 w-6 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs"
-                                  >
-                                    {result.title.substring(0, 2)}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">{result.title}</p>
-                                    {result.handle && (
-                                      <p className="text-xs text-muted-foreground">@{result.handle}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </CommandItem>
-                            ))}
-                        </CommandGroup>
-                      </>
-                    ) : (
-                      <CommandEmpty>No results found</CommandEmpty>
-                    )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Mobile Search Expanded */}
-          {isSearchOpen && (
-            <div className="absolute inset-x-0 top-full mt-1 p-2 bg-background border-b md:hidden">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search events, communities..."
-                  className="pl-8 w-full"
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              {searchQuery.length > 1 && (
-                <div className="mt-2 max-h-60 overflow-y-auto rounded-md border bg-popover shadow-md">
-                  {isSearching ? (
-                    <div className="flex items-center justify-center py-6">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : searchResults.length > 0 ? (
-                    <div className="p-1">
-                      <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                        Events
-                      </div>
-                      {searchResults
-                        .filter(result => result.type === 'event')
-                        .map(result => (
-                          <div 
-                            key={result.id}
-                            className="flex items-center gap-2 rounded-sm px-2 py-1.5 hover:bg-accent cursor-pointer"
-                            onClick={() => handleSelectSearchResult(result.url)}
-                          >
-                            <CalendarDays className="h-4 w-4 text-blue-500" />
-                            <div>
-                              <p className="text-sm">{result.title}</p>
-                              {result.date && (
-                                <p className="text-xs text-muted-foreground">{result.date}</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      
-                      <div className="mt-2 px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                        Communities
-                      </div>
-                      {searchResults
-                        .filter(result => result.type === 'community')
-                        .map(result => (
-                          <div 
-                            key={result.id}
-                            className="flex items-center gap-2 rounded-sm px-2 py-1.5 hover:bg-accent cursor-pointer"
-                            onClick={() => handleSelectSearchResult(result.url)}
-                          >
+                      <div className="p-1">
+                        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                          Events
+                        </div>
+                        {searchResults
+                          .filter(result => result.type === 'event')
+                          .map(result => (
                             <div 
-                              className="h-5 w-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs"
+                              key={result.id}
+                              className="flex items-center gap-2 rounded-sm px-2 py-1.5 hover:bg-accent cursor-pointer"
+                              onClick={() => handleSelectSearchResult(result.url)}
                             >
-                              {result.title.substring(0, 2)}
+                              <CalendarDays className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm truncate">{result.title}</p>
+                                {result.date && (
+                                  <p className="text-xs text-muted-foreground truncate">{result.date}</p>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm">{result.title}</p>
-                              {result.handle && (
-                                <p className="text-xs text-muted-foreground">@{result.handle}</p>
-                              )}
+                          ))}
+                        
+                        <div className="mt-2 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                          Communities
+                        </div>
+                        {searchResults
+                          .filter(result => result.type === 'community')
+                          .map(result => (
+                            <div 
+                              key={result.id}
+                              className="flex items-center gap-2 rounded-sm px-2 py-1.5 hover:bg-accent cursor-pointer"
+                              onClick={() => handleSelectSearchResult(result.url)}
+                            >
+                              <div 
+                                className="h-5 w-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs flex-shrink-0"
+                              >
+                                {result.title.substring(0, 2)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm truncate">{result.title}</p>
+                                {result.handle && (
+                                  <p className="text-xs text-muted-foreground truncate">@{result.handle}</p>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                    </div>
-                  ) : (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
-                      No results found
-                    </div>
-                  )}
-                </div>
-              )}
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="p-6 text-center text-sm text-muted-foreground">
+                        No results found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Desktop Search */}
+          {!isSearchOpen && (
+            <div className="hidden md:block w-64">
+              <Popover open={searchQuery.length > 1} onOpenChange={() => {}}>
+                <PopoverTrigger asChild>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search events, communities..."
+                      className="pl-8"
+                      value={searchQuery}
+                      onChange={(e) => handleSearch(e.target.value)}
+                    />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-[350px] p-0" align="start" sideOffset={5}>
+                  <Command>
+                    <CommandList>
+                      {isSearching ? (
+                        <div className="flex items-center justify-center py-6">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : searchResults.length > 0 ? (
+                        <>
+                          <CommandGroup heading="Events">
+                            {searchResults
+                              .filter(result => result.type === 'event')
+                              .map(result => (
+                                <CommandItem 
+                                  key={result.id}
+                                  onSelect={() => handleSelectSearchResult(result.url)}
+                                  className="flex items-center gap-2 py-2"
+                                >
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <CalendarDays className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium truncate">{result.title}</p>
+                                      {result.date && (
+                                        <p className="text-xs text-muted-foreground truncate">{result.date}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                          <CommandGroup heading="Communities">
+                            {searchResults
+                              .filter(result => result.type === 'community')
+                              .map(result => (
+                                <CommandItem 
+                                  key={result.id}
+                                  onSelect={() => handleSelectSearchResult(result.url)}
+                                  className="flex items-center gap-2 py-2"
+                                >
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <div 
+                                      className="h-6 w-6 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs flex-shrink-0"
+                                    >
+                                      {result.title.substring(0, 2)}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium truncate">{result.title}</p>
+                                      {result.handle && (
+                                        <p className="text-xs text-muted-foreground truncate">@{result.handle}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </>
+                      ) : (
+                        <CommandEmpty>No results found</CommandEmpty>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
           
@@ -448,26 +477,40 @@ export default function Navbar() {
           {session ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Avatar className="h-8 w-8 cursor-pointer">
-                  <AvatarImage src={session.user?.image || ""} />
-                  <AvatarFallback>
-                    {session.user?.name?.charAt(0) || "U"}
-                  </AvatarFallback>
-                </Avatar>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={session.user?.image || ""} />
+                    <AvatarFallback>
+                      {session.user?.name?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem className="font-medium">
-                  {session.user?.name}
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="flex items-center justify-start gap-2 p-2">
+                  <div className="flex flex-col space-y-1 leading-none">
+                    <p className="font-medium">{session.user?.name}</p>
+                    <p className="w-[200px] truncate text-sm text-muted-foreground">
+                      {session.user?.email}
+                    </p>
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="cursor-pointer">
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="cursor-pointer">
+                    Settings
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/profile")}>
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/settings")}>
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut()}>
+                <DropdownMenuItem
+                  className="text-red-600 cursor-pointer"
+                  onClick={() => signOut()}
+                >
                   Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
