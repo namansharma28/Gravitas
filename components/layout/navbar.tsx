@@ -220,7 +220,7 @@ export default function Navbar() {
   };
 
   return (
-    <div className="top-navbar fixed left-0 right-0 top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-2">
+    <div className="top-navbar fixed left-0 right-0 top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 py-2 md:px-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Image
@@ -233,7 +233,7 @@ export default function Navbar() {
           <span className="text-xl font-bold">Gravitas</span>
         </div>
         
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex items-center gap-1 md:gap-4">
           {/* Mobile Search */}
           <div className="md:hidden">
             <Button
@@ -509,7 +509,7 @@ export default function Navbar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-red-600 cursor-pointer"
-                  onClick={() => signOut()}
+                  onClick={() => signOut({ callbackUrl: '/' })}
                 >
                   Sign out
                 </DropdownMenuItem>

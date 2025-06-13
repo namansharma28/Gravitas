@@ -177,17 +177,17 @@ export default function Home() {
         className="space-y-4 pb-8"
       >
         <div className="text-center space-y-4">
-          <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-primary via-blue-600 to-purple-600 dark:from-primary dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-            {session ? `Welcome back, ${session.user?.name?.split(' ')[0]}!` : 'Welcome to Eventify'}
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary via-blue-600 to-purple-600 dark:from-primary dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+            {session ? `Welcome back, ${session.user?.name?.split(' ')[0]}!` : 'Welcome to Gravitas'}
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
             {session 
               ? "Discover what's happening in your communities and never miss an event" 
               : "Connect with communities, discover amazing events, and build meaningful relationships"
             }
           </p>
           {!session && (
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild>
                 <Link href="/auth/signup">Get Started</Link>
               </Button>
@@ -204,18 +204,18 @@ export default function Home() {
           {/* Feed Section */}
           <Card className="overflow-hidden shadow-lg">
             <CardHeader className="bg-muted/50 border-b">
-              <CardTitle className="text-2xl font-bold">Your Feed</CardTitle>
+              <CardTitle className="text-xl md:text-2xl font-bold">Your Feed</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {!session ? (
-                <div className="text-center py-16 px-8">
+                <div className="text-center py-16 px-4 md:px-8">
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <Users className="h-20 w-20 text-blue-500 dark:text-blue-400 mx-auto mb-6" />
-                    <h3 className="text-2xl font-bold mb-4">Join the Community</h3>
+                    <Users className="h-16 w-16 md:h-20 md:w-20 text-blue-500 dark:text-blue-400 mx-auto mb-6" />
+                    <h3 className="text-xl md:text-2xl font-bold mb-4">Join the Community</h3>
                     <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                       Sign in to see personalized updates from communities you follow and events you're interested in
                     </p>
@@ -225,14 +225,14 @@ export default function Home() {
                   </motion.div>
                 </div>
               ) : feedItems.length === 0 ? (
-                <div className="text-center py-16 px-8">
+                <div className="text-center py-16 px-4 md:px-8">
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <CalendarDays className="h-20 w-20 text-purple-500 dark:text-purple-400 mx-auto mb-6" />
-                    <h3 className="text-2xl font-bold mb-4">Your Feed Awaits</h3>
+                    <CalendarDays className="h-16 w-16 md:h-20 md:w-20 text-purple-500 dark:text-purple-400 mx-auto mb-6" />
+                    <h3 className="text-xl md:text-2xl font-bold mb-4">Your Feed Awaits</h3>
                     <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                       Follow some communities to see their latest updates and events here
                     </p>
@@ -242,7 +242,7 @@ export default function Home() {
                   </motion.div>
                 </div>
               ) : (
-                <div className="p-6 space-y-8">
+                <div className="p-4 md:p-6 space-y-6 md:space-y-8">
                   <AnimatePresence>
                     {feedItems.map((item, index) => (
                       <motion.div
@@ -257,19 +257,19 @@ export default function Home() {
                         <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 shadow-md">
                           {item.type === "event" && item.image && (
                             <div 
-                              className="relative h-48 w-full bg-gradient-to-r from-blue-500 to-purple-600"
+                              className="relative h-40 md:h-48 w-full bg-gradient-to-r from-blue-500 to-purple-600"
                               style={{
                                 backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${item.image})`,
                                 backgroundSize: "cover",
                                 backgroundPosition: "center",
                               }}
                             >
-                              <div className="absolute inset-0 flex items-end p-6 text-white">
+                              <div className="absolute inset-0 flex items-end p-4 md:p-6 text-white">
                                 <div className="space-y-2">
                                   <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30">
                                     🎉 Event
                                   </Badge>
-                                  <h3 className="text-2xl font-bold leading-tight">{item.title}</h3>
+                                  <h3 className="text-xl md:text-2xl font-bold leading-tight">{item.title}</h3>
                                   {item.eventDate && (
                                     <p className="flex items-center gap-2 text-white/90">
                                       <CalendarDays size={16} /> {item.eventDate}
@@ -285,7 +285,7 @@ export default function Home() {
                             </div>
                           )}
 
-                          <CardContent className={`p-6 ${item.type === "event" && item.image ? "pt-4" : ""}`}>
+                          <CardContent className={`p-4 md:p-6 ${item.type === "event" && item.image ? "pt-4" : ""}`}>
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10 ring-2 ring-primary/10">
@@ -367,7 +367,7 @@ export default function Home() {
           </Card>
         </div>
 
-        <div className="space-y-8 lg:col-span-4">
+        <div className="space-y-6 md:space-y-8 lg:col-span-4">
           {/* Upcoming Events */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -390,7 +390,7 @@ export default function Home() {
               </CardHeader>
               <CardContent className="p-0">
                 {upcomingEvents.length === 0 ? (
-                  <div className="text-center py-8 px-6">
+                  <div className="text-center py-8 px-4 md:px-6">
                     <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-3">No upcoming events</p>
                     <Button asChild size="sm">
@@ -408,11 +408,11 @@ export default function Home() {
                       >
                         <Link 
                           href={`/events/${event._id}`}
-                          className="block rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30 bg-card"
+                          className="block rounded-lg border p-3 md:p-4 transition-all hover:shadow-md hover:border-primary/30 bg-card"
                         >
                           <div className="flex items-center gap-3">
                             <div 
-                              className="h-14 w-14 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 flex-shrink-0 flex items-center justify-center"
+                              className="h-12 w-12 md:h-14 md:w-14 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 flex-shrink-0 flex items-center justify-center"
                               style={{
                                 backgroundImage: event.image 
                                   ? `url(${event.image})`
@@ -482,7 +482,7 @@ export default function Home() {
               </CardHeader>
               <CardContent className="p-0">
                 {trendingCommunities.length === 0 ? (
-                  <div className="text-center py-8 px-6">
+                  <div className="text-center py-8 px-4 md:px-6">
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-3">No trending communities</p>
                     <Button asChild size="sm">
@@ -553,9 +553,9 @@ export default function Home() {
             transition={{ delay: 0.6 }}
           >
             <Card className="overflow-hidden shadow-lg">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary to-purple-500 dark:from-primary dark:to-purple-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="h-8 w-8 text-primary-foreground" />
+              <CardContent className="p-4 md:p-6 text-center">
+                <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-primary to-purple-500 dark:from-primary dark:to-purple-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-7 w-7 md:h-8 md:w-8 text-primary-foreground" />
                 </div>
                 <h3 className="font-bold text-lg mb-2">Start Your Community</h3>
                 <p className="text-sm text-muted-foreground mb-4">

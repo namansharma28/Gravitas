@@ -215,7 +215,7 @@ export default function CalendarPage() {
     return (
       <div className="container mx-auto py-6">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Calendar</h1>
           <p className="text-muted-foreground">Sign in to see events from your communities</p>
         </div>
         <Card>
@@ -237,9 +237,9 @@ export default function CalendarPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="mb-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Calendar</h1>
             <p className="text-muted-foreground">Keep track of all your upcoming events</p>
           </div>
           <Button asChild>
@@ -279,7 +279,7 @@ export default function CalendarPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Community</label>
               <Select value={selectedCommunity} onValueChange={setSelectedCommunity}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[180px] md:w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -382,7 +382,7 @@ export default function CalendarPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[600px] pr-4">
+            <ScrollArea className="h-[400px] md:h-[600px] pr-4">
               <AnimatePresence mode="wait">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
@@ -422,7 +422,7 @@ export default function CalendarPage() {
                         <Card className="overflow-hidden hover:shadow-md transition-shadow">
                           <div className="relative">
                             <div 
-                              className="h-32 w-full bg-gradient-to-r from-blue-500 to-purple-600"
+                              className="h-24 md:h-32 w-full bg-gradient-to-r from-blue-500 to-purple-600"
                               style={{
                                 backgroundImage: event.image 
                                   ? `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${event.image})`
@@ -431,25 +431,25 @@ export default function CalendarPage() {
                                 backgroundPosition: "center",
                               }}
                             />
-                            <div className="absolute top-4 right-4">
+                            <div className="absolute top-2 right-2 md:top-4 md:right-4">
                               {getEventTypeBadge(event)}
                             </div>
-                            <div className="absolute bottom-0 left-0 p-4 text-white">
-                              <h3 className="text-lg font-bold mb-1">{event.title}</h3>
-                              <div className="flex items-center gap-4 text-sm">
+                            <div className="absolute bottom-0 left-0 p-3 md:p-4 text-white">
+                              <h3 className="text-base md:text-lg font-bold mb-1">{event.title}</h3>
+                              <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm">
                                 <div className="flex items-center gap-1">
-                                  <Clock className="h-4 w-4" />
+                                  <Clock className="h-3 w-3 md:h-4 md:w-4" />
                                   <span>{formatEventTime(event.time)}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                  <span className="truncate max-w-[150px]">{event.location}</span>
+                                  <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                                  <span className="truncate max-w-[120px] md:max-w-[150px]">{event.location}</span>
                                 </div>
                               </div>
                             </div>
                           </div>
                           
-                          <CardContent className="p-4">
+                          <CardContent className="p-3 md:p-4">
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-6 w-6">
@@ -505,13 +505,13 @@ export default function CalendarPage() {
             Quick overview of events from your communities
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Tabs defaultValue="registered" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
               <TabsTrigger value="registered">Registered ({events.filter(e => e.userRegistered).length})</TabsTrigger>
               <TabsTrigger value="member">My Communities ({events.filter(e => e.userRelation === 'member' || e.userRelation === 'admin').length})</TabsTrigger>
-              <TabsTrigger value="follower">Following ({events.filter(e => e.userRelation === 'follower').length})</TabsTrigger>
-              <TabsTrigger value="all">All ({events.length})</TabsTrigger>
+              <TabsTrigger value="follower" className="hidden md:inline-flex">Following ({events.filter(e => e.userRelation === 'follower').length})</TabsTrigger>
+              <TabsTrigger value="all" className="hidden md:inline-flex">All ({events.length})</TabsTrigger>
             </TabsList>
             
             {['registered', 'member', 'follower', 'all'].map((tab) => (
@@ -527,10 +527,10 @@ export default function CalendarPage() {
                     .slice(0, 6)
                     .map((event) => (
                       <Card key={event.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
+                        <CardContent className="p-3 md:p-4">
                           <div className="flex items-center gap-3 mb-3">
                             <div 
-                              className="w-12 h-12 rounded-md bg-gradient-to-r from-blue-500 to-purple-600 flex-shrink-0"
+                              className="w-10 h-10 md:w-12 md:h-12 rounded-md bg-gradient-to-r from-blue-500 to-purple-600 flex-shrink-0"
                               style={{
                                 backgroundImage: event.image 
                                   ? `url(${event.image})`

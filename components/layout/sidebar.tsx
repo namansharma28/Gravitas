@@ -125,7 +125,7 @@ export default function Sidebar() {
     return (
       <div
         className={cn(
-          "fixed left-4 top-20 z-40 flex h-[calc(100vh-6rem)] flex-col bg-white p-4 shadow-[0_0_15px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out dark:bg-gray-950 dark:shadow-[0_0_15px_rgba(0,0,0,0.3)] rounded-lg border",
+          "fixed left-2 top-20 z-40 flex h-[calc(100vh-6rem)] flex-col bg-white p-3 shadow-[0_0_15px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out dark:bg-gray-950 dark:shadow-[0_0_15px_rgba(0,0,0,0.3)] rounded-lg border",
           isCollapsed ? "sidebar-collapsed" : "sidebar-expanded"
         )}
       >
