@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { ArrowRight, Upload, X } from "lucide-react";
+import { ArrowRight, Upload, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -53,6 +54,7 @@ const formSchema = z.object({
 export default function CreateCommunityPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { status } = useSession();
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,6 +69,33 @@ export default function CreateCommunityPage() {
       location: "",
     },
   });
+
+  useEffect(() => {
+    if (status === "loading") return;
+    
+    if (status === "unauthenticated") {
+      router.push("/auth/signin?callbackUrl=/communities/create");
+      return;
+    }
+  }, [status, router]);
+
+  if (status === "loading") {
+    return (
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="mt-4 text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
+        <h1 className="text-3xl font-bold">Please Sign In</h1>
+        <p className="text-muted-foreground mb-4">You need to be signed in to create a community.</p>
+      </div>
+    );
+  }
 
   const handleImageUpload = async (file: File, type: 'avatar' | 'banner') => {
     try {
