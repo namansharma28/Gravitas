@@ -74,7 +74,7 @@ export default function ProfilePage() {
     if (status === "loading") return;
     
     if (status === "unauthenticated") {
-      router.push("/auth/signin");
+      router.push("/auth/signin?callbackUrl=/profile");
       return;
     }
 
@@ -116,23 +116,23 @@ export default function ProfilePage() {
     }
   };
 
-  if (!session) {
+  if (status === "loading" || isLoading) {
+    return (
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="mt-4 text-muted-foreground">Loading profile...</p>
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated") {
     return (
       <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
         <h1 className="text-3xl font-bold">Please Sign In</h1>
         <p className="text-muted-foreground mb-4">You need to be signed in to view this page.</p>
         <Button asChild>
-          <Link href="/auth/signin">Sign In</Link>
+          <Link href="/auth/signin?callbackUrl=/profile">Sign In</Link>
         </Button>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="mt-4 text-muted-foreground">Loading profile...</p>
       </div>
     );
   }
