@@ -13,16 +13,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const protectedPaths = ["/communities/create"];
-  const isProtectedPath = protectedPaths.some(path => 
-    request.nextUrl.pathname.startsWith(path)
-  );
+  // const protectedPaths = ["/communities/create"];
+  // const isProtectedPath = protectedPaths.some(path => 
+  //   request.nextUrl.pathname.startsWith(path)
+  // );
 
-  if (isProtectedPath && !token) {
-    const redirectUrl = new URL("/auth/signin", request.url);
-    redirectUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
-  }
+  // if (isProtectedPath && !token) {
+  //   const redirectUrl = new URL("/auth/signin", request.url);
+  //   redirectUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
+  //   return NextResponse.redirect(redirectUrl);
+  // }
 
   return NextResponse.next();
 }
