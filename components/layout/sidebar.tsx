@@ -120,26 +120,9 @@ export default function Sidebar() {
     { href: "/settings", icon: <Settings size={20} />, label: "Settings" },
   ];
 
-  return (
-    <>
-      {isMobile && (
-        <div className="fixed bottom-0 left-0 z-20 flex h-14 w-full items-center justify-between border-t bg-background px-4 md:hidden shadow-black">
-          {sidebarLinks.slice(0, 5).map((link) => (
-            <Link key={link.href} href={link.href} className="text-muted-foreground">
-              {link.icon}
-            </Link>
-          ))}
-        </div>
-      )}
-
-      <div
-        className={cn(
-          "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm transition-all duration-300 ease-in-out md:hidden shadow-black",
-          isSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        )}
-        onClick={closeSidebar}
-      />
-
+  // Desktop sidebar
+  if (!isMobile) {
+    return (
       <div
         className={cn(
           "fixed left-4 top-20 z-40 flex h-[calc(100vh-6rem)] flex-col bg-white p-4 shadow-[0_0_15px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out dark:bg-gray-950 dark:shadow-[0_0_15px_rgba(0,0,0,0.3)] rounded-lg border",
@@ -231,6 +214,27 @@ export default function Sidebar() {
           </div>
         )}
       </div>
-    </>
+    );
+  }
+
+  // Mobile bottom navbar
+  return (
+    <div className="fixed bottom-4 left-4 right-4 z-50 flex h-16 items-center justify-between rounded-lg border bg-background shadow-lg md:hidden">
+      {sidebarLinks.slice(0, 5).map((link) => (
+        <Link 
+          key={link.href} 
+          href={link.href} 
+          className={cn(
+            "flex h-full flex-1 flex-col items-center justify-center",
+            pathname === link.href 
+              ? "text-primary" 
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {link.icon}
+          <span className="mt-1 text-[10px]">{link.label}</span>
+        </Link>
+      ))}
+    </div>
   );
 }

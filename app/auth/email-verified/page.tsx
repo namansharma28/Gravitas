@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function EmailVerifiedPage() {
   const router = useRouter();
@@ -37,8 +38,14 @@ export default function EmailVerifiedPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <CalendarDays size={24} className="text-primary" />
-              <span className="text-xl font-bold">Eventify</span>
+              <Image
+                src="/logo.svg"
+                alt="Gravitas"
+                width={32}
+                height={32}
+                className="h-8 w-auto"
+              />
+              <span className="text-xl font-bold">Gravitas</span>
             </div>
             <div className="flex justify-center mb-4">
               <CheckCircle className="h-16 w-16 text-green-500" />

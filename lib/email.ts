@@ -45,56 +45,34 @@ export async function sendOTPEmail(email: string, name: string, otp: string) {
     await transporter.verify();
 
     const mailOptions = {
-      from: `"Eventify" <${process.env.SENDER_EMAIL}>`,
+      from: `"Gravitas" <${process.env.SENDER_EMAIL}>`,
       to: email,
-      subject: 'Verify your Eventify account - OTP Code',
+      subject: 'Verify your Gravitas account - OTP Code',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #333; margin: 0;">Eventify</h1>
-            <p style="color: #666; margin: 5px 0;">Community Event Platform</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px;">
+            <h1 style="color: #333; margin: 0;">Gravitas</h1>
           </div>
-          
-          <div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px; text-align: center;">
-            <h2 style="color: #333; margin-bottom: 20px;">Verify Your Email Address</h2>
-            <p style="color: #666; margin-bottom: 30px;">Hi ${name},</p>
-            <p style="color: #666; margin-bottom: 30px;">
-              Thank you for signing up for Eventify! Please use the verification code below to complete your registration:
+          <div style="padding: 20px;">
+            <h2 style="color: #333;">Email Verification</h2>
+            <p style="color: #666; line-height: 1.6;">
+              Thank you for signing up for Gravitas! Please use the verification code below to complete your registration:
             </p>
-            
-            <div style="background-color: #007bff; color: white; padding: 20px; border-radius: 8px; margin: 30px 0;">
-              <h1 style="margin: 0; font-size: 32px; letter-spacing: 8px;">${otp}</h1>
+            <div style="background-color: #f8f9fa; padding: 15px; text-align: center; border-radius: 5px; margin: 20px 0;">
+              <h1 style="color: #333; margin: 0; letter-spacing: 5px;">${otp}</h1>
             </div>
-            
-            <p style="color: #666; font-size: 14px; margin-top: 30px;">
-              This code will expire in <strong>10 minutes</strong>.
+            <p style="color: #666; line-height: 1.6;">
+              This code will expire in 10 minutes.
             </p>
-            <p style="color: #666; font-size: 14px;">
-              If you didn't create an account with Eventify, please ignore this email.
+            <p style="color: #666; line-height: 1.6;">
+              If you didn't create an account with Gravitas, please ignore this email.
             </p>
-          </div>
-          
-          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-            <p style="color: #999; font-size: 12px;">
-              Best regards,<br>
-              The Eventify Team
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              The Gravitas Team
             </p>
           </div>
         </div>
-      `,
-      text: `
-        Hi ${name},
-        
-        Thank you for signing up for Eventify! 
-        
-        Your verification code is: ${otp}
-        
-        This code will expire in 10 minutes.
-        
-        If you didn't create an account with Eventify, please ignore this email.
-        
-        Best regards,
-        The Eventify Team
       `,
     };
 
@@ -116,56 +94,34 @@ export async function sendPasswordResetOTP(email: string, name: string, otp: str
     await transporter.verify();
 
     const mailOptions = {
-      from: `"Eventify" <${process.env.SMTP_USER}>`,
+      from: `"Gravitas" <${process.env.SMTP_USER}>`,
       to: email,
-      subject: 'Reset your Eventify password - OTP Code',
+      subject: 'Reset your Gravitas password - OTP Code',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #333; margin: 0;">Eventify</h1>
-            <p style="color: #666; margin: 5px 0;">Community Event Platform</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px;">
+            <h1 style="color: #333; margin: 0;">Gravitas</h1>
           </div>
-          
-          <div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px; text-align: center;">
-            <h2 style="color: #333; margin-bottom: 20px;">Reset Your Password</h2>
-            <p style="color: #666; margin-bottom: 30px;">Hi ${name},</p>
-            <p style="color: #666; margin-bottom: 30px;">
-              You requested to reset your password. Please use the code below:
+          <div style="padding: 20px;">
+            <h2 style="color: #333;">Password Reset</h2>
+            <p style="color: #666; line-height: 1.6;">
+              You requested to reset your password. Please use the code below to reset your password:
             </p>
-            
-            <div style="background-color: #dc3545; color: white; padding: 20px; border-radius: 8px; margin: 30px 0;">
-              <h1 style="margin: 0; font-size: 32px; letter-spacing: 8px;">${otp}</h1>
+            <div style="background-color: #f8f9fa; padding: 15px; text-align: center; border-radius: 5px; margin: 20px 0;">
+              <h1 style="color: #333; margin: 0; letter-spacing: 5px;">${otp}</h1>
             </div>
-            
-            <p style="color: #666; font-size: 14px; margin-top: 30px;">
-              This code will expire in <strong>10 minutes</strong>.
+            <p style="color: #666; line-height: 1.6;">
+              This code will expire in 10 minutes.
             </p>
-            <p style="color: #666; font-size: 14px;">
-              If you didn't request this, please ignore this email.
+            <p style="color: #666; line-height: 1.6;">
+              If you didn't request a password reset, please ignore this email.
             </p>
-          </div>
-          
-          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-            <p style="color: #999; font-size: 12px;">
-              Best regards,<br>
-              The Eventify Team
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              The Gravitas Team
             </p>
           </div>
         </div>
-      `,
-      text: `
-        Hi ${name},
-        
-        You requested to reset your password.
-        
-        Your reset code is: ${otp}
-        
-        This code will expire in 10 minutes.
-        
-        If you didn't request this, please ignore this email.
-        
-        Best regards,
-        The Eventify Team
       `,
     };
 
@@ -176,4 +132,90 @@ export async function sendPasswordResetOTP(email: string, name: string, otp: str
     console.error('Failed to send password reset OTP:', error);
     throw new Error(`Failed to send password reset email: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+}
+
+export async function sendWelcomeEmail(email: string, name: string) {
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: true,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD,
+    },
+  });
+
+  const mailOptions = {
+    from: `"Gravitas" <${process.env.SENDER_EMAIL}>`,
+    to: email,
+    subject: 'Welcome to Gravitas!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px;">
+          <h1 style="color: #333; margin: 0;">Gravitas</h1>
+        </div>
+        <div style="padding: 20px;">
+          <h2 style="color: #333;">Welcome to Gravitas!</h2>
+          <p style="color: #666; line-height: 1.6;">
+            Thank you for signing up for Gravitas!
+          </p>
+          <p style="color: #666; line-height: 1.6;">
+            If you didn't create an account with Gravitas, please ignore this email.
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            The Gravitas Team
+          </p>
+        </div>
+      </div>
+    `,
+  };
+
+  // ... rest of the code ...
+}
+
+export async function sendPasswordResetEmail(email: string, otp: string) {
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: true,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD,
+    },
+  });
+
+  const mailOptions = {
+    from: `"Gravitas" <${process.env.SMTP_USER}>`,
+    to: email,
+    subject: 'Reset your Gravitas password - OTP Code',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px;">
+          <h1 style="color: #333; margin: 0;">Gravitas</h1>
+        </div>
+        <div style="padding: 20px;">
+          <h2 style="color: #333;">Password Reset</h2>
+          <p style="color: #666; line-height: 1.6;">
+            You requested to reset your password. Please use the code below to reset your password:
+          </p>
+          <div style="background-color: #f8f9fa; padding: 15px; text-align: center; border-radius: 5px; margin: 20px 0;">
+            <h1 style="color: #333; margin: 0; letter-spacing: 5px;">${otp}</h1>
+          </div>
+          <p style="color: #666; line-height: 1.6;">
+            This code will expire in 10 minutes.
+          </p>
+          <p style="color: #666; line-height: 1.6;">
+            If you didn't request a password reset, please ignore this email.
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            The Gravitas Team
+          </p>
+        </div>
+      </div>
+    `,
+  };
+
+  // ... rest of the code ...
 }

@@ -40,3 +40,10 @@ export const mockFeedItems: FeedItem[] = [
 
 export const mockUpcomingEvents = [];
 export const mockTrendingCommunities = [];
+
+export const mockData = {
+  team: {
+    name: 'Gravitas Team',
+    handle: 'gravitas-team',
+  },
+};

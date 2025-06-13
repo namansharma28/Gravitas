@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import Image from "next/image";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -132,7 +133,7 @@ export default function SignInPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-primary to-primary/90" />
         <div className="relative z-20 flex items-center gap-2 text-lg font-medium">
           <CalendarDays size={24} />
-          <span>Eventify</span>
+          <span>Gravitas</span>
         </div>
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
@@ -154,10 +155,18 @@ export default function SignInPage() {
             <Card className="border-0 shadow-none">
               <CardHeader className="space-y-1">
                 <div className="flex items-center justify-center gap-2">
-                  <CalendarDays size={24} className="text-primary" />
-                  <span className="text-xl font-bold">Eventify</span>
+                  <Image
+                    src="/logo.svg"
+                    alt="Gravitas"
+                    width={32}
+                    height={32}
+                    className="h-8 w-auto"
+                  />
+                  <span className="text-xl font-bold">Gravitas</span>
                 </div>
-                <CardTitle className="text-center text-2xl">Welcome back</CardTitle>
+                <CardTitle className="text-center text-2xl">
+                  {session ? `Welcome back, ${session.user?.name?.split(' ')[0]}!` : 'Welcome to Gravitas'}
+                </CardTitle>
                 <CardDescription className="text-center">
                   Sign in to your account to continue
                 </CardDescription>
@@ -287,7 +296,7 @@ export default function SignInPage() {
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
                     <span className="bg-background px-2 text-muted-foreground">
-                      New to Eventify?
+                      New to Gravitas?
                     </span>
                   </div>
                 </div>

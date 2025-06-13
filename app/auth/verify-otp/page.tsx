@@ -9,6 +9,7 @@ import { CalendarDays, Mail, Loader2, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function VerifyOTPPage() {
   const router = useRouter();
@@ -183,8 +184,14 @@ export default function VerifyOTPPage() {
           <Card className="w-full max-w-md">
             <CardHeader className="space-y-1 text-center">
               <div className="flex items-center justify-center gap-2 mb-4">
-                <CalendarDays size={24} className="text-primary" />
-                <span className="text-xl font-bold">Eventify</span>
+                <Image
+                  src="/logo.svg"
+                  alt="Gravitas"
+                  width={32}
+                  height={32}
+                  className="h-8 w-auto"
+                />
+                <span className="text-xl font-bold">Gravitas</span>
               </div>
               <div className="flex justify-center mb-4">
                 <CheckCircle className="h-16 w-16 text-green-500" />
@@ -210,8 +217,14 @@ export default function VerifyOTPPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <CalendarDays size={24} className="text-primary" />
-              <span className="text-xl font-bold">Eventify</span>
+              <Image
+                src="/logo.svg"
+                alt="Gravitas"
+                width={32}
+                height={32}
+                className="h-8 w-auto"
+              />
+              <span className="text-xl font-bold">Gravitas</span>
             </div>
             <div className="flex justify-center mb-4">
               <Mail className="h-16 w-16 text-blue-500" />

@@ -77,76 +77,42 @@ export async function sendTicketEmail(data: TicketEmailData) {
     }
 
     const mailOptions = {
-      from: `"Eventify" <${process.env.SENDER_EMAIL}>`,
+      from: `"Gravitas" <${process.env.SENDER_EMAIL}>`,
       to: data.recipientEmail,
-      subject: data.emailSubject,
+      subject: `Your Ticket for ${data.eventDetails.title}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <!-- Header -->
-          <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">🎫 Event Ticket</h1>
-            <p style="color: white; margin: 5px 0; opacity: 0.9;">Eventify</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #1a1a1a; padding: 20px; text-align: center; border-radius: 5px;">
+            <h1 style="color: white; margin: 0;">Gravitas</h1>
+            <p style="color: white; margin: 5px 0; opacity: 0.9;">Gravitas</p>
           </div>
-          
-          <!-- Ticket Content -->
-          <div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px; border-left: 5px solid #667eea;">
-            <h2 style="color: #333; margin-bottom: 20px;">Hi ${data.recipientName},</h2>
-            
-            <div style="margin: 20px 0; padding: 20px; background: white; border-radius: 8px; border: 2px dashed #667eea;">
-              ${data.emailMessage.replace(/\n/g, '<br>')}
-            </div>
-            
-            <!-- Event Details Card -->
-            <div style="background: white; padding: 25px; border-radius: 10px; margin: 25px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-              <h3 style="color: #667eea; margin-bottom: 20px; font-size: 20px;">📅 Event Details</h3>
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 8px 0; color: #666; font-weight: bold; width: 100px;">Event:</td>
-                  <td style="padding: 8px 0; color: #333;">${data.eventDetails.title}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666; font-weight: bold;">Date:</td>
-                  <td style="padding: 8px 0; color: #333;">${data.eventDetails.date}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666; font-weight: bold;">Time:</td>
-                  <td style="padding: 8px 0; color: #333;">${data.eventDetails.time}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666; font-weight: bold;">Location:</td>
-                  <td style="padding: 8px 0; color: #333;">${data.eventDetails.location}</td>
-                </tr>
-              </table>
-            </div>
-            
-            ${data.includeQR ? `
-            <!-- QR Code Section -->
-            <div style="background: white; padding: 25px; border-radius: 10px; text-align: center; margin: 25px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-              <h3 style="color: #667eea; margin-bottom: 15px;">🔍 Check-in QR Code</h3>
-              <img src="cid:qrcode" alt="QR Code for Check-in" style="max-width: 200px; border: 2px solid #667eea; border-radius: 10px; padding: 10px; background: white;">
-              <p style="color: #666; font-size: 14px; margin-top: 15px;">
-                Show this QR code to volunteers at the event for quick check-in
+          <div style="padding: 20px;">
+            <h2 style="color: #333;">Your Event Ticket</h2>
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="color: #333; margin: 0 0 10px 0;">${data.eventDetails.title}</h3>
+              <p style="color: #666; margin: 5px 0;">
+                <strong>Date:</strong> ${new Date(data.eventDetails.date).toLocaleDateString()}
+              </p>
+              <p style="color: #666; margin: 5px 0;">
+                <strong>Time:</strong> ${new Date(data.eventDetails.time).toLocaleTimeString()}
+              </p>
+              <p style="color: #666; margin: 5px 0;">
+                <strong>Location:</strong> ${data.eventDetails.location}
+              </p>
+              <p style="color: #666; margin: 5px 0;">
+                <strong>Ticket Type:</strong> ${data.emailMessage}
+              </p>
+              <p style="color: #666; margin: 5px 0;">
+                <strong>Ticket ID:</strong> ${data.participantId}
               </p>
             </div>
-            ` : ''}
-            
-            <!-- Important Notes -->
-            <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; border-left: 4px solid #2196f3; margin: 25px 0;">
-              <h4 style="color: #1976d2; margin-bottom: 10px;">📋 Important Notes:</h4>
-              <ul style="color: #666; margin: 0; padding-left: 20px;">
-                <li>Please arrive 15 minutes before the event starts</li>
-                <li>Keep this email as your confirmation</li>
-                ${data.includeQR ? '<li>Present the QR code above for check-in</li>' : ''}
-                <li>Contact us if you have any questions</li>
-              </ul>
-            </div>
-          </div>
-          
-          <!-- Footer -->
-          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-            <p style="color: #999; font-size: 14px;">
-              This ticket was generated by Eventify<br>
-              If you have any questions, please contact the event organizers
+            <p style="color: #666; line-height: 1.6;">
+              This ticket was generated by Gravitas<br>
+              Please present this ticket at the event entrance.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              The Gravitas Team
             </p>
           </div>
         </div>
@@ -167,7 +133,7 @@ export async function sendTicketEmail(data: TicketEmailData) {
         Please keep this email as your confirmation.
         
         Best regards,
-        The Eventify Team
+        The Gravitas Team
       `,
       attachments: data.includeQR && qrCodeAttachment ? [qrCodeAttachment] : [],
     };

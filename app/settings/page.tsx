@@ -45,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -68,7 +69,6 @@ interface UserProfile {
 }
 
 interface NotificationSettings {
-  emailNotifications: boolean;
   eventReminders: boolean;
   communityUpdates: boolean;
   newFollowers: boolean;
@@ -78,13 +78,13 @@ interface NotificationSettings {
 
 export default function SettingsPage() {
   const { data: session, update } = useSession();
+  const router = useRouter();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [notifications, setNotifications] = useState<NotificationSettings>({
-    emailNotifications: true,
     eventReminders: true,
     communityUpdates: true,
     newFollowers: false,
@@ -542,7 +542,6 @@ export default function SettingsPage() {
 
 function getNotificationDescription(key: keyof NotificationSettings): string {
   const descriptions = {
-    emailNotifications: "Receive email notifications for important updates",
     eventReminders: "Get reminded about upcoming events you're registered for",
     communityUpdates: "Receive updates from communities you follow",
     newFollowers: "Get notified when someone follows you",

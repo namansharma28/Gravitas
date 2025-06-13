@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
+import Image from "next/image";
 
 export default function AuthErrorPage() {
   const searchParams = useSearchParams();
@@ -29,9 +30,15 @@ export default function AuthErrorPage() {
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center gap-2">
-            <CalendarDays size={24} className="text-primary" />
-            <span className="text-xl font-bold">Eventify</span>
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo.svg"
+              alt="Gravitas"
+              width={32}
+              height={32}
+              className="h-8 w-auto"
+            />
+            <span className="text-xl font-bold">Gravitas</span>
           </div>
           <CardTitle className="text-center text-2xl">Authentication Error</CardTitle>
           <CardDescription className="text-center">
