@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, FileText, Users, Trash2, Pencil, Share2 } from "lucide-react";
+import { Plus, FileText, Users, Trash2, Pencil, Share2, Mail, QrCode, CheckSquare, Square, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -33,6 +34,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ParticipantShortlistDialog from "@/components/events/participant-shortlist-dialog";
+import TicketEmailDialog from "@/components/events/ticket-email-dialog";
 
 interface Form {
   id: string;
@@ -61,6 +70,7 @@ interface FormResponse {
     value: string | boolean | number;
   }[];
   createdAt: string;
+  shortlisted?: boolean;
 }
 
 export default function FormsPage({ params }: { params: { id: string } }) {
@@ -71,6 +81,10 @@ export default function FormsPage({ params }: { params: { id: string } }) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedForm, setSelectedForm] = useState<Form | null>(null);
   const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
+  const [selectedResponses, setSelectedResponses] = useState<Set<string>>(new Set());
+  const [isShortlistDialogOpen, setIsShortlistDialogOpen] = useState(false);
+  const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
+  const [exportingFormId, setExportingFormId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchForms();
@@ -123,6 +137,99 @@ export default function FormsPage({ params }: { params: { id: string } }) {
     }
   }
 
+  async function exportFormResponses(formId: string, formTitle: string) {
+    setExportingFormId(formId);
+    
+    try {
+      const response = await fetch(`/api/events/${params.id}/forms/${formId}/export`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to export data');
+      }
+
+      // Get the blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Get filename from response headers or create default
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `${formTitle.replace(/[^a-zA-Z0-9]/g, '_')}_responses.xlsx`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: `Form responses exported to ${filename}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export form responses",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingFormId(null);
+    }
+  }
+
+  const handleSelectResponse = (responseId: string, checked: boolean) => {
+    const newSelected = new Set(selectedResponses);
+    if (checked) {
+      newSelected.add(responseId);
+    } else {
+      newSelected.delete(responseId);
+    }
+    setSelectedResponses(newSelected);
+  };
+
+  const handleSelectAll = (formId: string, checked: boolean) => {
+    const form = forms.find(f => f.id === formId);
+    if (!form) return;
+
+    const newSelected = new Set(selectedResponses);
+    form.responses.forEach(response => {
+      if (checked) {
+        newSelected.add(response.id);
+      } else {
+        newSelected.delete(response.id);
+      }
+    });
+    setSelectedResponses(newSelected);
+  };
+
+  const getSelectedResponsesForForm = (formId: string) => {
+    const form = forms.find(f => f.id === formId);
+    if (!form) return [];
+    
+    return form.responses.filter(response => selectedResponses.has(response.id));
+  };
+
+  const handleShortlistSuccess = () => {
+    setSelectedResponses(new Set());
+    fetchForms();
+    setIsShortlistDialogOpen(false);
+  };
+
+  const handleTicketSuccess = () => {
+    setIsTicketDialogOpen(false);
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-8">
@@ -161,154 +268,218 @@ export default function FormsPage({ params }: { params: { id: string } }) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-8">
           {forms.map((form) => (
             <Card key={form.id}>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{form.title}</span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => router.push(`/events/${params.id}/forms/${form.id}/edit`)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        navigator.clipboard.writeText(
-                          `${window.location.origin}/events/${params.id}/forms/${form.id}/submit`
-                        );
-                        toast({
-                          title: "Link copied",
-                          description: "Form submission link copied to clipboard",
-                        });
-                      }}
-                    >
-                      <Share2 className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <span>{form.title}</span>
+                      <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
-                          disabled={deletingFormId === form.id}
+                          onClick={() => router.push(`/events/${params.id}/forms/${form.id}/edit`)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the form
-                            and all associated responses.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteForm(form.id)}
-                            disabled={deletingFormId === form.id}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            {deletingFormId === form.id ? "Deleting..." : "Delete Form"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Share2 className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  `${window.location.origin}/events/${params.id}/forms/${form.id}/submit`
+                                );
+                                toast({
+                                  title: "Link copied",
+                                  description: "Form submission link copied to clipboard",
+                                });
+                              }}
+                            >
+                              <Share2 className="mr-2 h-4 w-4" />
+                              Copy Link
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => exportFormResponses(form.id, form.title)}
+                              disabled={exportingFormId === form.id || form.responses.length === 0}
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              {exportingFormId === form.id ? "Exporting..." : "Export as Excel"}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={deletingFormId === form.id}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the form
+                                and all associated responses.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteForm(form.id)}
+                                disabled={deletingFormId === form.id}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {deletingFormId === form.id ? "Deleting..." : "Delete Form"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {form.description}
+                    </p>
                   </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  {form.description}
-                </p>
-                <div className="mb-4 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {form.fields.length} fields
-                  </span>
-                  <span className="text-muted-foreground">
-                    {form.responses.length} responses
-                  </span>
                 </div>
-                <div className="flex gap-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
+              </CardHeader>
+
+              <CardContent>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>{form.fields.length} fields</span>
+                    <span>{form.responses.length} responses</span>
+                    <span>{form.responses.filter(r => r.shortlisted).length} shortlisted</span>
+                  </div>
+                  
+                  {form.responses.length > 0 && (
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
-                        className="flex-1"
-                        onClick={() => setSelectedForm(form)}
+                        size="sm"
+                        onClick={() => exportFormResponses(form.id, form.title)}
+                        disabled={exportingFormId === form.id}
                       >
-                        <Users className="mr-2 h-4 w-4" /> View Responses
+                        <Download className="mr-2 h-4 w-4" />
+                        {exportingFormId === form.id ? "Exporting..." : "Export Excel"}
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl">
-                      <DialogHeader>
-                        <DialogTitle>{form.title} - Responses</DialogTitle>
-                      </DialogHeader>
-                      {form.responses.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8">
-                          <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-                          <p className="text-muted-foreground">No responses yet</p>
-                        </div>
-                      ) : (
-                        <div className="max-h-[60vh] overflow-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>User</TableHead>
-                                {form.fields.map((field) => (
-                                  <TableHead key={field.id}>{field.label}</TableHead>
-                                ))}
-                                <TableHead>Submitted</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {form.responses.map((response) => (
-                                <TableRow key={response.id}>
-                                  <TableCell>
-                                    <div>
-                                      <div className="font-medium">
-                                        {response.user.name}
-                                      </div>
-                                      <div className="text-sm text-muted-foreground">
-                                        {response.user.email}
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                  {form.fields.map((field) => {
-                                    const answer = response.answers.find(
-                                      (a) => a.fieldId === field.id
-                                    );
-                                    return (
-                                      <TableCell key={field.id}>
-                                        {answer ? String(answer.value) : "-"}
-                                      </TableCell>
-                                    );
-                                  })}
-                                  <TableCell className="text-muted-foreground">
-                                    {new Date(response.createdAt).toLocaleDateString()}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
+
+                      {selectedResponses.size > 0 && (
+                        <>
+                          <ParticipantShortlistDialog
+                            eventId={params.id}
+                            formId={form.id}
+                            selectedResponses={getSelectedResponsesForForm(form.id)}
+                            onSuccess={handleShortlistSuccess}
+                            trigger={
+                              <Button variant="outline" size="sm">
+                                <CheckSquare className="mr-2 h-4 w-4" />
+                                Shortlist ({selectedResponses.size})
+                              </Button>
+                            }
+                          />
+                          
+                          <TicketEmailDialog
+                            eventId={params.id}
+                            selectedResponses={getSelectedResponsesForForm(form.id)}
+                            onSuccess={handleTicketSuccess}
+                            trigger={
+                              <Button size="sm">
+                                <Mail className="mr-2 h-4 w-4" />
+                                Send Tickets ({selectedResponses.size})
+                              </Button>
+                            }
+                          />
+                        </>
                       )}
-                    </DialogContent>
-                  </Dialog>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => router.push(`/events/${params.id}/forms/${form.id}/edit`)}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" /> Edit
-                  </Button>
+                    </div>
+                  )}
                 </div>
+
+                {form.responses.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <Users className="mb-4 h-12 w-12 text-muted-foreground" />
+                    <p className="text-muted-foreground">No responses yet</p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox
+                              checked={form.responses.every(r => selectedResponses.has(r.id))}
+                              onCheckedChange={(checked) => handleSelectAll(form.id, !!checked)}
+                            />
+                          </TableHead>
+                          <TableHead>Participant</TableHead>
+                          {form.fields.slice(0, 3).map((field) => (
+                            <TableHead key={field.id}>{field.label}</TableHead>
+                          ))}
+                          <TableHead>Status</TableHead>
+                          <TableHead>Submitted</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {form.responses.map((response) => (
+                          <TableRow key={response.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedResponses.has(response.id)}
+                                onCheckedChange={(checked) => handleSelectResponse(response.id, !!checked)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">
+                                  {response.user.name}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {response.user.email}
+                                </div>
+                              </div>
+                            </TableCell>
+                            {form.fields.slice(0, 3).map((field) => {
+                              const answer = response.answers.find(
+                                (a) => a.fieldId === field.id
+                              );
+                              return (
+                                <TableCell key={field.id}>
+                                  {answer ? String(answer.value) : "-"}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell>
+                              {response.shortlisted ? (
+                                <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                                  Shortlisted
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                                  Pending
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {new Date(response.createdAt).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

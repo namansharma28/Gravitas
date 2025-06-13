@@ -67,6 +67,7 @@ export default function CreateEventPage({ params }: { params: { handle: string }
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isMultiDay, setIsMultiDay] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -84,6 +85,7 @@ export default function CreateEventPage({ params }: { params: { handle: string }
   });
 
   const handleImageUpload = async (file: File) => {
+    setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -100,16 +102,20 @@ export default function CreateEventPage({ params }: { params: { handle: string }
       const data = await response.json();
       form.setValue('image', data.url);
       setImagePreview(data.url);
+      return data.url;
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to upload image. Please try again.",
         variant: "destructive",
       });
+      throw error;
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
@@ -129,11 +135,24 @@ export default function CreateEventPage({ params }: { params: { handle: string }
       reader.readAsDataURL(file);
 
       // Upload to Cloudinary
-      handleImageUpload(file);
+      try {
+        await handleImageUpload(file);
+      } catch (error) {
+        setImagePreview(null);
+      }
     }
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (isUploading) {
+      toast({
+        title: "Please wait",
+        description: "Image is still uploading. Please wait before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Prepare the data for submission

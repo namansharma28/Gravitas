@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Calendar, Clock, MapPin, Users, Share2, ArrowLeft, Pencil, Plus, FileText, Mail, User, Trash2 } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Share2, ArrowLeft, Pencil, Plus, FileText, Mail, User, Trash2, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import UpdateCard from "@/components/events/update-card";
+import RegisterButton from "@/components/events/register-button";
+import RegistrationControl from "@/components/events/registration-control";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,12 +74,22 @@ interface Update {
   createdAt: string;
 }
 
+interface RSVPStatus {
+  registrationEnabled: boolean;
+  registrationType: 'direct' | 'form' | null;
+  rsvpFormId: string | null;
+  userRegistered: boolean;
+  registrationCount: number;
+  capacity: number;
+}
+
 export default function EventPage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
   const router = useRouter();
   const { toast } = useToast();
   const [event, setEvent] = useState<Event | null>(null);
   const [updates, setUpdates] = useState<Update[]>([]);
+  const [rsvpStatus, setRSVPStatus] = useState<RSVPStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -97,6 +109,13 @@ export default function EventPage({ params }: { params: { id: string } }) {
         if (updatesResponse.ok) {
           const updatesData = await updatesResponse.json();
           setUpdates(updatesData);
+        }
+
+        // Fetch RSVP status
+        const rsvpResponse = await fetch(`/api/events/${params.id}/rsvp`);
+        if (rsvpResponse.ok) {
+          const rsvpData = await rsvpResponse.json();
+          setRSVPStatus(rsvpData);
         }
       } catch (error) {
         toast({
@@ -137,6 +156,19 @@ export default function EventPage({ params }: { params: { id: string } }) {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRegistrationChange = async () => {
+    // Refresh RSVP status when registration settings change
+    try {
+      const rsvpResponse = await fetch(`/api/events/${params.id}/rsvp`);
+      if (rsvpResponse.ok) {
+        const rsvpData = await rsvpResponse.json();
+        setRSVPStatus(rsvpData);
+      }
+    } catch (error) {
+      console.error('Failed to refresh RSVP status:', error);
     }
   };
 
@@ -220,6 +252,20 @@ export default function EventPage({ params }: { params: { id: string } }) {
                   </Link>
                 </Button>
               )}
+              {/* QR Scanner Button for Members and Admins */}
+              <Button asChild variant="outline" className="gap-2">
+                <Link href={`/events/${event.id}/scan`}>
+                  <QrCode size={16} /> Scan QR Codes
+                </Link>
+              </Button>
+              {/* Registration Control */}
+              {rsvpStatus && (
+                <RegistrationControl 
+                  eventId={event.id} 
+                  registrationEnabled={rsvpStatus.registrationEnabled}
+                  onRegistrationChange={handleRegistrationChange}
+                />
+              )}
               {userPermissions.canDelete && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -279,7 +325,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
                   <Users className="mt-0.5 h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Attendees</p>
-                    <p>{event.attendees.length} going • {event.interested.length} interested</p>
+                    <p>{rsvpStatus?.registrationCount || 0} registered</p>
                   </div>
                 </div>
               </div>
@@ -332,26 +378,21 @@ export default function EventPage({ params }: { params: { id: string } }) {
             <CardContent className="p-6">
               <div className="flex justify-between">
                 <h3 className="font-semibold">Registration</h3>
-                <Badge variant="outline" className="border-green-300 text-green-600 dark:border-green-800 dark:text-green-400">Free</Badge>
+                <Badge variant="outline" className="border-green-300 text-green-600 dark:border-green-800 dark:text-green-400">
+                  {rsvpStatus?.registrationEnabled ? 'Open' : 'Closed'}
+                </Badge>
               </div>
               <div className="mt-4 space-y-4">
-                {session ? (
-                  <>
-                    <Button className="w-full" size="lg">RSVP Now</Button>
-                    <Button variant="outline" className="w-full" size="lg">
-                      <Share2 className="mr-2 h-4 w-4" /> Share
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button className="w-full" size="lg" asChild>
-                      <Link href="/auth/signin">Sign in to RSVP</Link>
-                    </Button>
-                    <Button variant="outline" className="w-full" size="lg">
-                      <Share2 className="mr-2 h-4 w-4" /> Share
-                    </Button>
-                  </>
+                {rsvpStatus && (
+                  <RegisterButton 
+                    eventId={event.id}
+                    rsvpStatus={rsvpStatus}
+                    onRegistrationChange={handleRegistrationChange}
+                  />
                 )}
+                <Button variant="outline" className="w-full" size="lg">
+                  <Share2 className="mr-2 h-4 w-4" /> Share
+                </Button>
               </div>
               <Separator className="my-4" />
               <div className="mt-2 space-y-2">
@@ -360,8 +401,12 @@ export default function EventPage({ params }: { params: { id: string } }) {
                   <span className="text-sm font-medium">{event.capacity}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Registered</span>
+                  <span className="text-sm font-medium">{rsvpStatus?.registrationCount || 0}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Available</span>
-                  <span className="text-sm font-medium">{event.capacity - event.attendees.length}</span>
+                  <span className="text-sm font-medium">{event.capacity - (rsvpStatus?.registrationCount || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Registration closes</span>
@@ -397,11 +442,29 @@ export default function EventPage({ params }: { params: { id: string } }) {
                 </p>
                 <p className="mt-2 flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span>Sarah Johnson (Event Coordinator)</span>
+                  <span>Event Coordinator</span>
                 </p>
               </div>
             </CardContent>
           </Card>
+
+          {/* QR Scanner Quick Access for Mobile */}
+          {userPermissions.isMember && (
+            <Card className="lg:hidden">
+              <CardContent className="p-6">
+                <h3 className="mb-4 font-semibold">Event Management</h3>
+                <Button asChild className="w-full gap-2">
+                  <Link href={`/events/${event.id}/scan`}>
+                    <QrCode className="h-4 w-4" />
+                    Scan QR Codes
+                  </Link>
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  Scan participant tickets for check-in
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

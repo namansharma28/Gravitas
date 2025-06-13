@@ -1,54 +1,575 @@
-import { CalendarIcon } from "lucide-react";
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { CalendarIcon, ChevronLeft, ChevronRight, Plus, Filter, MapPin, Clock, Users, Calendar as CalendarDays } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockUpcomingEvents } from "@/lib/mock-data";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import CalendarEventCard from "@/components/events/calendar-event-card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  capacity: number;
+  image?: string;
+  community: {
+    id: string;
+    name: string;
+    handle: string;
+    avatar: string;
+  };
+  registrationCount: number;
+  userRegistered: boolean;
+  userRelation: 'member' | 'follower' | 'admin';
+  isMultiDay?: boolean;
+  endDate?: string;
+}
+
+interface EventsByDate {
+  [date: string]: CalendarEvent[];
+}
 
 export default function CalendarPage() {
+  const { data: session } = useSession();
+  const { toast } = useToast();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [eventsByDate, setEventsByDate] = useState<EventsByDate>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [filterType, setFilterType] = useState<'all' | 'member' | 'follower' | 'registered'>('all');
+  const [selectedCommunity, setSelectedCommunity] = useState<string>('all');
+  const [communities, setCommunities] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (session) {
+      fetchEvents();
+      fetchUserCommunities();
+    }
+  }, [session, currentMonth, filterType, selectedCommunity]);
+
+  const fetchEvents = async () => {
+    try {
+      const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+      const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      
+      const params = new URLSearchParams({
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        filter: filterType,
+        community: selectedCommunity,
+      });
+
+      const response = await fetch(`/api/calendar/events?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setEvents(data);
+        
+        // Group events by date
+        const grouped: EventsByDate = {};
+        data.forEach((event: CalendarEvent) => {
+          const eventDate = event.date;
+          if (!grouped[eventDate]) {
+            grouped[eventDate] = [];
+          }
+          grouped[eventDate].push(event);
+          
+          // Handle multi-day events
+          if (event.isMultiDay && event.endDate) {
+            const start = new Date(event.date);
+            const end = new Date(event.endDate);
+            const current = new Date(start);
+            current.setDate(current.getDate() + 1);
+            
+            while (current <= end) {
+              const dateStr = current.toISOString().split('T')[0];
+              if (!grouped[dateStr]) {
+                grouped[dateStr] = [];
+              }
+              grouped[dateStr].push({
+                ...event,
+                title: `${event.title} (Day ${Math.ceil((current.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1})`,
+              });
+              current.setDate(current.getDate() + 1);
+            }
+          }
+        });
+        
+        setEventsByDate(grouped);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load calendar events",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchUserCommunities = async () => {
+    try {
+      const response = await fetch('/api/calendar/communities');
+      if (response.ok) {
+        const data = await response.json();
+        setCommunities(data);
+      }
+    } catch (error) {
+      console.error('Error fetching communities:', error);
+    }
+  };
+
+  const getEventsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return eventsByDate[dateStr] || [];
+  };
+
+  const getSelectedDateEvents = () => {
+    return getEventsForDate(selectedDate);
+  };
+
+  const hasEventsOnDate = (date: Date) => {
+    return getEventsForDate(date).length > 0;
+  };
+
+  const getEventTypeForDate = (date: Date) => {
+    const events = getEventsForDate(date);
+    if (events.length === 0) return null;
+    
+    const hasRegistered = events.some(e => e.userRegistered);
+    const hasMember = events.some(e => e.userRelation === 'member' || e.userRelation === 'admin');
+    const hasFollower = events.some(e => e.userRelation === 'follower');
+    
+    if (hasRegistered) return 'registered';
+    if (hasMember) return 'member';
+    if (hasFollower) return 'follower';
+    return 'other';
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newMonth = new Date(currentMonth);
+    if (direction === 'prev') {
+      newMonth.setMonth(newMonth.getMonth() - 1);
+    } else {
+      newMonth.setMonth(newMonth.getMonth() + 1);
+    }
+    setCurrentMonth(newMonth);
+  };
+
+  const formatEventTime = (time: string) => {
+    try {
+      const [hours, minutes] = time.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours), parseInt(minutes));
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    } catch {
+      return time;
+    }
+  };
+
+  const getEventTypeColor = (type: string) => {
+    switch (type) {
+      case 'registered': return 'bg-green-500';
+      case 'member': return 'bg-blue-500';
+      case 'follower': return 'bg-purple-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getEventTypeBadge = (event: CalendarEvent) => {
+    if (event.userRegistered) {
+      return <Badge className="bg-green-500 text-white">Registered</Badge>;
+    }
+    if (event.userRelation === 'admin') {
+      return <Badge className="bg-red-500 text-white">Admin</Badge>;
+    }
+    if (event.userRelation === 'member') {
+      return <Badge className="bg-blue-500 text-white">Member</Badge>;
+    }
+    if (event.userRelation === 'follower') {
+      return <Badge className="bg-purple-500 text-white">Following</Badge>;
+    }
+    return null;
+  };
+
+  if (!session) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
+          <p className="text-muted-foreground">Sign in to see events from your communities</p>
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <CalendarIcon className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">Sign in to view your calendar</h3>
+            <p className="text-muted-foreground text-center mb-4">
+              See events from communities you follow and are a member of
+            </p>
+            <Button asChild>
+              <Link href="/auth/signin">Sign In</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-6">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
-        <p className="text-muted-foreground">Keep track of all your upcoming events</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
+            <p className="text-muted-foreground">Keep track of all your upcoming events</p>
+          </div>
+          <Button asChild>
+            <Link href="/communities/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Community
+            </Link>
+          </Button>
+        </div>
       </div>
 
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Event Type</label>
+              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Events</SelectItem>
+                  <SelectItem value="registered">Registered</SelectItem>
+                  <SelectItem value="member">My Communities</SelectItem>
+                  <SelectItem value="follower">Following</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Community</label>
+              <Select value={selectedCommunity} onValueChange={setSelectedCommunity}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Communities</SelectItem>
+                  {communities.map((community) => (
+                    <SelectItem key={community.id} value={community.id}>
+                      {community.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <Card className="col-span-1 lg:col-span-4">
+        {/* Calendar */}
+        <Card className="col-span-1 lg:col-span-5">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" /> Calendar
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5" />
+                {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={() => navigateMonth('next')}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             <CardDescription>Select a date to see events</CardDescription>
           </CardHeader>
           <CardContent>
-            <Calendar 
-              mode="single" 
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              month={currentMonth}
+              onMonthChange={setCurrentMonth}
               className="rounded-md border"
-              selected={new Date()}
+              modifiers={{
+                hasEvents: (date) => hasEventsOnDate(date),
+                registered: (date) => getEventTypeForDate(date) === 'registered',
+                member: (date) => getEventTypeForDate(date) === 'member',
+                follower: (date) => getEventTypeForDate(date) === 'follower',
+              }}
+              modifiersStyles={{
+                hasEvents: { fontWeight: 'bold' },
+                registered: { backgroundColor: '#10b981', color: 'white' },
+                member: { backgroundColor: '#3b82f6', color: 'white' },
+                follower: { backgroundColor: '#8b5cf6', color: 'white' },
+              }}
               classNames={{
                 day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
               }}
             />
+            
+            {/* Legend */}
+            <div className="mt-4 space-y-2">
+              <h4 className="text-sm font-medium">Legend</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-green-500"></div>
+                  <span>Registered</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-blue-500"></div>
+                  <span>Member</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-purple-500"></div>
+                  <span>Following</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-gray-500"></div>
+                  <span>Other</span>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 lg:col-span-8">
+        {/* Events for Selected Date */}
+        <Card className="col-span-1 lg:col-span-7">
           <CardHeader>
-            <CardTitle>Upcoming Events</CardTitle>
-            <CardDescription>Events from communities you follow</CardDescription>
+            <CardTitle>
+              Events for {selectedDate.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </CardTitle>
+            <CardDescription>
+              {getSelectedDateEvents().length} event(s) scheduled
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[500px] pr-4">
-              <div className="space-y-4">
-                {mockUpcomingEvents.map(event => (
-                  <CalendarEventCard key={event.id} event={event} />
-                ))}
-              </div>
+            <ScrollArea className="h-[600px] pr-4">
+              <AnimatePresence mode="wait">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                  </div>
+                ) : getSelectedDateEvents().length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="flex flex-col items-center justify-center py-12"
+                  >
+                    <CalendarDays className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No events scheduled</h3>
+                    <p className="text-muted-foreground text-center mb-4">
+                      There are no events on this date from your communities
+                    </p>
+                    <Button asChild>
+                      <Link href="/explore">Discover Events</Link>
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={selectedDate.toISOString()}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-4"
+                  >
+                    {getSelectedDateEvents().map((event, index) => (
+                      <motion.div
+                        key={event.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                          <div className="relative">
+                            <div 
+                              className="h-32 w-full bg-gradient-to-r from-blue-500 to-purple-600"
+                              style={{
+                                backgroundImage: event.image 
+                                  ? `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${event.image})`
+                                  : undefined,
+                                backgroundSize: "cover",
+                                backgroundPosition: "center",
+                              }}
+                            />
+                            <div className="absolute top-4 right-4">
+                              {getEventTypeBadge(event)}
+                            </div>
+                            <div className="absolute bottom-0 left-0 p-4 text-white">
+                              <h3 className="text-lg font-bold mb-1">{event.title}</h3>
+                              <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  <span>{formatEventTime(event.time)}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-4 w-4" />
+                                  <span className="truncate max-w-[150px]">{event.location}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src={event.community.avatar} />
+                                  <AvatarFallback>{event.community.name.substring(0, 2)}</AvatarFallback>
+                                </Avatar>
+                                <Link 
+                                  href={`/communities/${event.community.handle}`} 
+                                  className="text-sm font-medium hover:underline"
+                                >
+                                  {event.community.name}
+                                </Link>
+                              </div>
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <Users className="h-4 w-4" />
+                                <span>{event.registrationCount}/{event.capacity}</span>
+                              </div>
+                            </div>
+                            
+                            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                              {event.description}
+                            </p>
+                            
+                            <div className="flex gap-2">
+                              <Button asChild className="flex-1">
+                                <Link href={`/events/${event.id}`}>
+                                  View Details
+                                </Link>
+                              </Button>
+                              {!event.userRegistered && (
+                                <Button variant="outline" className="flex-1">
+                                  Register
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </ScrollArea>
           </CardContent>
         </Card>
       </div>
+
+      {/* Upcoming Events Summary */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Upcoming Events This Month</CardTitle>
+          <CardDescription>
+            Quick overview of events from your communities
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="registered" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="registered">Registered ({events.filter(e => e.userRegistered).length})</TabsTrigger>
+              <TabsTrigger value="member">My Communities ({events.filter(e => e.userRelation === 'member' || e.userRelation === 'admin').length})</TabsTrigger>
+              <TabsTrigger value="follower">Following ({events.filter(e => e.userRelation === 'follower').length})</TabsTrigger>
+              <TabsTrigger value="all">All ({events.length})</TabsTrigger>
+            </TabsList>
+            
+            {['registered', 'member', 'follower', 'all'].map((tab) => (
+              <TabsContent key={tab} value={tab} className="mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {events
+                    .filter((event) => {
+                      if (tab === 'registered') return event.userRegistered;
+                      if (tab === 'member') return event.userRelation === 'member' || event.userRelation === 'admin';
+                      if (tab === 'follower') return event.userRelation === 'follower';
+                      return true;
+                    })
+                    .slice(0, 6)
+                    .map((event) => (
+                      <Card key={event.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div 
+                              className="w-12 h-12 rounded-md bg-gradient-to-r from-blue-500 to-purple-600 flex-shrink-0"
+                              style={{
+                                backgroundImage: event.image 
+                                  ? `url(${event.image})`
+                                  : undefined,
+                                backgroundSize: "cover",
+                                backgroundPosition: "center",
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium truncate">{event.title}</h4>
+                              <p className="text-sm text-muted-foreground">{event.community.name}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{new Date(event.date).toLocaleDateString()}</span>
+                            <span>{formatEventTime(event.time)}</span>
+                          </div>
+                          <Button asChild size="sm" className="w-full mt-3">
+                            <Link href={`/events/${event.id}`}>View Event</Link>
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+                {events.filter((event) => {
+                  if (tab === 'registered') return event.userRegistered;
+                  if (tab === 'member') return event.userRelation === 'member' || event.userRelation === 'admin';
+                  if (tab === 'follower') return event.userRelation === 'follower';
+                  return true;
+                }).length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No events in this category</p>
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }

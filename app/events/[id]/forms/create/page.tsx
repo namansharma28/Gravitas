@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Trash2, ArrowLeft, X } from "lucide-react";
+import { Plus, Trash2, X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,15 +44,48 @@ type FormValues = z.infer<typeof formSchema>;
 export default function CreateFormPage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [eventTitle, setEventTitle] = useState("");
+
+  const isRSVP = searchParams.get('rsvp') === 'true';
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      fields: [
+      title: isRSVP ? "Event Registration Form" : "",
+      description: isRSVP ? "Please fill out this form to register for the event" : "",
+      fields: isRSVP ? [
+        {
+          id: crypto.randomUUID(),
+          label: "Full Name",
+          type: "text",
+          required: true,
+          options: [],
+          fileTypes: [],
+          maxFileSize: 5,
+        },
+        {
+          id: crypto.randomUUID(),
+          label: "Email Address",
+          type: "email",
+          required: true,
+          options: [],
+          fileTypes: [],
+          maxFileSize: 5,
+        },
+        {
+          id: crypto.randomUUID(),
+          label: "Phone Number",
+          type: "text",
+          required: false,
+          options: [],
+          fileTypes: [],
+          maxFileSize: 5,
+        },
+      ] : [
         {
           id: crypto.randomUUID(),
           label: "Name",
@@ -80,33 +113,46 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
     name: "fields",
   });
 
+  useEffect(() => {
+    const fetchEventDetails = async () => {
+      try {
+        const response = await fetch(`/api/events/${params.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setEventTitle(data.title);
+        }
+      } catch (error) {
+        console.error('Error fetching event details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEventDetails();
+  }, [params.id]);
+
   const addOption = (fieldIndex: number) => {
     const field = fields[fieldIndex];
     const currentOptions = field.options || [];
-    update(fieldIndex, {
-      ...field,
-      options: [...currentOptions, ""]
-    });
+    const newOptions = [...currentOptions, ""];
+    
+    form.setValue(`fields.${fieldIndex}.options`, newOptions);
   };
 
   const updateOption = (fieldIndex: number, optionIndex: number, value: string) => {
     const field = fields[fieldIndex];
     const currentOptions = [...(field.options || [])];
     currentOptions[optionIndex] = value;
-    update(fieldIndex, {
-      ...field,
-      options: currentOptions
-    });
+    
+    form.setValue(`fields.${fieldIndex}.options`, currentOptions);
   };
 
   const removeOption = (fieldIndex: number, optionIndex: number) => {
     const field = fields[fieldIndex];
     const currentOptions = [...(field.options || [])];
     currentOptions.splice(optionIndex, 1);
-    update(fieldIndex, {
-      ...field,
-      options: currentOptions
-    });
+    
+    form.setValue(`fields.${fieldIndex}.options`, currentOptions);
   };
 
   const updateFieldType = (fieldIndex: number, newType: string) => {
@@ -114,51 +160,48 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
     const shouldHaveOptions = newType === "select" || newType === "checkbox";
     const isFileType = newType === "file";
     
-    update(fieldIndex, {
-      ...field,
-      type: newType as any,
-      options: shouldHaveOptions ? (field.options?.length ? field.options : [""]) : [],
-      fileTypes: isFileType ? (field.fileTypes?.length ? field.fileTypes : ["pdf", "doc", "docx", "txt", "jpg", "png"]) : [],
-      maxFileSize: isFileType ? (field.maxFileSize || 5) : undefined,
-    });
+    form.setValue(`fields.${fieldIndex}.type`, newType as any);
+    form.setValue(`fields.${fieldIndex}.options`, shouldHaveOptions ? [""] : []);
+    form.setValue(`fields.${fieldIndex}.fileTypes`, isFileType ? ["pdf", "doc", "docx", "txt", "jpg", "png"] : []);
+    form.setValue(`fields.${fieldIndex}.maxFileSize`, isFileType ? 5 : undefined);
   };
 
   const updateFileType = (fieldIndex: number, fileTypeIndex: number, value: string) => {
     const field = fields[fieldIndex];
     const currentFileTypes = [...(field.fileTypes || [])];
     currentFileTypes[fileTypeIndex] = value;
-    update(fieldIndex, {
-      ...field,
-      fileTypes: currentFileTypes
-    });
+    form.setValue(`fields.${fieldIndex}.fileTypes`, currentFileTypes);
   };
 
   const addFileType = (fieldIndex: number) => {
     const field = fields[fieldIndex];
     const currentFileTypes = field.fileTypes || [];
-    update(fieldIndex, {
-      ...field,
-      fileTypes: [...currentFileTypes, ""]
-    });
+    form.setValue(`fields.${fieldIndex}.fileTypes`, [...currentFileTypes, ""]);
   };
 
   const removeFileType = (fieldIndex: number, fileTypeIndex: number) => {
     const field = fields[fieldIndex];
     const currentFileTypes = [...(field.fileTypes || [])];
     currentFileTypes.splice(fileTypeIndex, 1);
-    update(fieldIndex, {
-      ...field,
-      fileTypes: currentFileTypes
-    });
+    form.setValue(`fields.${fieldIndex}.fileTypes`, currentFileTypes);
   };
 
   const updateFileSize = (fieldIndex: number, size: number) => {
-    const field = fields[fieldIndex];
-    update(fieldIndex, {
-      ...field,
-      maxFileSize: size
-    });
+    form.setValue(`fields.${fieldIndex}.maxFileSize`, size);
   };
+
+  const fileTypeOptions = [
+    { value: "pdf", label: "PDF" },
+    { value: "doc", label: "DOC" },
+    { value: "docx", label: "DOCX" },
+    { value: "txt", label: "TXT" },
+    { value: "jpg", label: "JPG" },
+    { value: "jpeg", label: "JPEG" },
+    { value: "png", label: "PNG" },
+    { value: "gif", label: "GIF" },
+    { value: "zip", label: "ZIP" },
+    { value: "rar", label: "RAR" },
+  ];
 
   async function onSubmit(data: FormValues) {
     if (!session?.user) {
@@ -172,13 +215,18 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
 
     // Validate that select and checkbox fields have options
     for (const field of data.fields) {
-      if ((field.type === "select" || field.type === "checkbox") && (!field.options || field.options.length === 0 || field.options.every(opt => !opt.trim()))) {
-        toast({
-          title: "Error",
-          description: `Field "${field.label}" requires at least one option`,
-          variant: "destructive",
-        });
-        return;
+      if ((field.type === "select" || field.type === "checkbox")) {
+        const validOptions = (field.options || []).filter(opt => opt.trim());
+        if (validOptions.length === 0) {
+          toast({
+            title: "Error",
+            description: `Field "${field.label}" requires at least one option`,
+            variant: "destructive",
+          });
+          return;
+        }
+        // Update the field with filtered options
+        field.options = validOptions;
       }
       
       if (field.type === "file" && (!field.fileTypes || field.fileTypes.length === 0 || field.fileTypes.every(type => !type.trim()))) {
@@ -202,16 +250,34 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
         body: JSON.stringify({
           ...data,
           eventId: params.id,
+          isRSVPForm: isRSVP,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create form");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create form");
+      }
+
+      const result = await response.json();
+
+      // If this is an RSVP form, update the event's RSVP settings
+      if (isRSVP) {
+        await fetch(`/api/events/${params.id}/rsvp`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "setRSVPForm",
+            formId: result.id,
+          }),
+        });
       }
 
       toast({
         title: "Success",
-        description: "Form created successfully",
+        description: isRSVP ? "Registration form created successfully" : "Form created successfully",
       });
 
       router.push(`/events/${params.id}/forms`);
@@ -226,18 +292,15 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
     }
   }
 
-  const fileTypeOptions = [
-    { value: "pdf", label: "PDF" },
-    { value: "doc", label: "DOC" },
-    { value: "docx", label: "DOCX" },
-    { value: "txt", label: "TXT" },
-    { value: "jpg", label: "JPG" },
-    { value: "jpeg", label: "JPEG" },
-    { value: "png", label: "PNG" },
-    { value: "gif", label: "GIF" },
-    { value: "zip", label: "ZIP" },
-    { value: "rar", label: "RAR" },
-  ];
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="flex items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8">
@@ -248,9 +311,14 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
             Back to Forms
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Create Form</h1>
+        <h1 className="text-3xl font-bold">
+          {isRSVP ? "Create Registration Form" : "Create Form"}
+        </h1>
         <p className="mt-2 text-muted-foreground">
-          Create a new registration form for your event
+          {isRSVP 
+            ? `Create a registration form for ${eventTitle}`
+            : `Create a new form for ${eventTitle}`
+          }
         </p>
       </div>
 
@@ -295,173 +363,177 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
             <CardTitle>Form Fields</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {fields.map((field, index) => (
-              <div key={field.id} className="space-y-4 rounded-lg border p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Field {index + 1}</h3>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor={`fields.${index}.label`}>Label</Label>
-                    <Input
-                      id={`fields.${index}.label`}
-                      {...form.register(`fields.${index}.label`)}
-                      placeholder="Enter field label"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`fields.${index}.type`}>Type</Label>
-                    <Select
-                      onValueChange={(value) => updateFieldType(index, value)}
-                      value={field.type}
+            {fields.map((field, index) => {
+              const watchedField = form.watch(`fields.${index}`);
+              
+              return (
+                <div key={field.id} className="space-y-4 rounded-lg border p-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Field {index + 1}</h3>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => remove(index)}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select field type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="number">Number</SelectItem>
-                        <SelectItem value="select">Select (Dropdown)</SelectItem>
-                        <SelectItem value="checkbox">Checkbox</SelectItem>
-                        <SelectItem value="file">File Upload</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`fields.${index}.required`}
-                    checked={field.required}
-                    onCheckedChange={(checked) => 
-                      update(index, { ...field, required: !!checked })
-                    }
-                  />
-                  <Label htmlFor={`fields.${index}.required`}>Required</Label>
-                </div>
-
-                {/* Options for select and checkbox fields */}
-                {(field.type === "select" || field.type === "checkbox") && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label>Options</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addOption(index)}
-                      >
-                        <Plus className="mr-1 h-3 w-3" /> Add Option
-                      </Button>
-                    </div>
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      {(field.options || []).map((option, optionIndex) => (
-                        <div key={optionIndex} className="flex items-center gap-2">
-                          <Input
-                            placeholder={`Option ${optionIndex + 1}`}
-                            value={option}
-                            onChange={(e) => updateOption(index, optionIndex, e.target.value)}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeOption(index, optionIndex)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      {(!field.options || field.options.length === 0) && (
-                        <p className="text-sm text-muted-foreground">
-                          Add at least one option for this field type
-                        </p>
-                      )}
+                      <Label htmlFor={`fields.${index}.label`}>Label</Label>
+                      <Input
+                        id={`fields.${index}.label`}
+                        {...form.register(`fields.${index}.label`)}
+                        placeholder="Enter field label"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`fields.${index}.type`}>Type</Label>
+                      <Select
+                        onValueChange={(value) => updateFieldType(index, value)}
+                        value={watchedField.type}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select field type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="text">Text</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="number">Number</SelectItem>
+                          <SelectItem value="select">Select (Dropdown)</SelectItem>
+                          <SelectItem value="checkbox">Checkbox</SelectItem>
+                          <SelectItem value="file">File Upload</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                )}
 
-                {/* File upload configuration */}
-                {field.type === "file" && (
-                  <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`fields.${index}.required`}
+                      checked={watchedField.required}
+                      onCheckedChange={(checked) => 
+                        form.setValue(`fields.${index}.required`, !!checked)
+                      }
+                    />
+                    <Label htmlFor={`fields.${index}.required`}>Required</Label>
+                  </div>
+
+                  {/* Options for select and checkbox fields */}
+                  {(watchedField.type === "select" || watchedField.type === "checkbox") && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <Label>Allowed File Types</Label>
+                        <Label>Options</Label>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => addFileType(index)}
+                          onClick={() => addOption(index)}
                         >
-                          <Plus className="mr-1 h-3 w-3" /> Add File Type
+                          <Plus className="mr-1 h-3 w-3" /> Add Option
                         </Button>
                       </div>
                       <div className="space-y-2">
-                        {(field.fileTypes || []).map((fileType, fileTypeIndex) => (
-                          <div key={fileTypeIndex} className="flex items-center gap-2">
-                            <Select
-                              value={fileType}
-                              onValueChange={(value) => updateFileType(index, fileTypeIndex, value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select file type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {fileTypeOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                        {(watchedField.options || []).map((option, optionIndex) => (
+                          <div key={optionIndex} className="flex items-center gap-2">
+                            <Input
+                              placeholder={`Option ${optionIndex + 1}`}
+                              value={option}
+                              onChange={(e) => updateOption(index, optionIndex, e.target.value)}
+                            />
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => removeFileType(index, fileTypeIndex)}
+                              onClick={() => removeOption(index, optionIndex)}
                             >
                               <X className="h-4 w-4" />
                             </Button>
                           </div>
                         ))}
-                        {(!field.fileTypes || field.fileTypes.length === 0) && (
+                        {(!watchedField.options || watchedField.options.length === 0) && (
                           <p className="text-sm text-muted-foreground">
-                            Add at least one allowed file type
+                            Add at least one option for this field type
                           </p>
                         )}
                       </div>
                     </div>
+                  )}
 
-                    <div className="space-y-2">
-                      <Label htmlFor={`fields.${index}.maxFileSize`}>Max File Size (MB)</Label>
-                      <Input
-                        id={`fields.${index}.maxFileSize`}
-                        type="number"
-                        min="1"
-                        max="50"
-                        value={field.maxFileSize || 5}
-                        onChange={(e) => updateFileSize(index, parseInt(e.target.value) || 5)}
-                        placeholder="5"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Maximum file size allowed for upload (1-50 MB)
-                      </p>
+                  {/* File upload configuration */}
+                  {watchedField.type === "file" && (
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label>Allowed File Types</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addFileType(index)}
+                          >
+                            <Plus className="mr-1 h-3 w-3" /> Add File Type
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          {(watchedField.fileTypes || []).map((fileType, fileTypeIndex) => (
+                            <div key={fileTypeIndex} className="flex items-center gap-2">
+                              <Select
+                                value={fileType}
+                                onValueChange={(value) => updateFileType(index, fileTypeIndex, value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select file type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {fileTypeOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeFileType(index, fileTypeIndex)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          {(!watchedField.fileTypes || watchedField.fileTypes.length === 0) && (
+                            <p className="text-sm text-muted-foreground">
+                              Add at least one allowed file type
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`fields.${index}.maxFileSize`}>Max File Size (MB)</Label>
+                        <Input
+                          id={`fields.${index}.maxFileSize`}
+                          type="number"
+                          min="1"
+                          max="50"
+                          value={watchedField.maxFileSize || 5}
+                          onChange={(e) => updateFileSize(index, parseInt(e.target.value) || 5)}
+                          placeholder="5"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Maximum file size allowed for upload (1-50 MB)
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
 
             <Button
               type="button"

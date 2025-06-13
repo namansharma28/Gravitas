@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import FeedCard from "@/components/feed/feed-card";
 import { mockFeedItems } from "@/lib/mock-data";
+import { FeedItem } from "@/types/feed";
 
 export default function FeedSection() {
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState<"all" | "event" | "update">("all");
   
   const filteredItems = mockFeedItems.filter(item => {
     if (activeTab === "all") return true;
@@ -17,7 +18,7 @@ export default function FeedSection() {
 
   return (
     <div className="rounded-lg border bg-card shadow-sm">
-      <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
+      <Tabs defaultValue="all" className="w-full" onValueChange={(value) => setActiveTab(value as "all" | "event" | "update")}>
         <div className="border-b px-3 py-2">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="all" className="text-xs sm:text-sm">

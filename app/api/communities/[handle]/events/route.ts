@@ -15,7 +15,7 @@ export async function POST(
     }
 
     const data = await request.json();
-    const { title, description, date, time, location, capacity, image } = data;
+    const { title, description, date, endDate, time, location, capacity, image, isMultiDay } = data;
 
     const client = await clientPromise;
     const db = client.db('gravitas');
@@ -32,7 +32,7 @@ export async function POST(
     }
 
     // Create event
-    const event = await db.collection('events').insertOne({
+    const eventData: any = {
       title,
       description,
       date,
@@ -44,8 +44,19 @@ export async function POST(
       creatorId: session.user.id,
       attendees: [],
       interested: [],
+      registrationEnabled: false,
+      registrationType: null,
+      rsvpFormId: null,
       createdAt: new Date(),
-    });
+    };
+
+    // Add multi-day fields if applicable
+    if (isMultiDay && endDate) {
+      eventData.isMultiDay = true;
+      eventData.endDate = endDate;
+    }
+
+    const event = await db.collection('events').insertOne(eventData);
 
     // Update community with new event
     await db.collection('communities').updateOne(
@@ -58,10 +69,12 @@ export async function POST(
       title,
       description,
       date,
+      endDate: isMultiDay ? endDate : undefined,
       time,
       location,
       capacity,
       image,
+      isMultiDay: !!isMultiDay,
     });
   } catch (error: any) {
     console.error('Error creating event:', error);
@@ -102,10 +115,12 @@ export async function GET(
       title: event.title,
       description: event.description,
       date: event.date,
+      endDate: event.endDate,
       time: event.time,
       location: event.location,
       capacity: event.capacity,
       image: event.image,
+      isMultiDay: event.isMultiDay || false,
       attendees: event.attendees || [],
       interested: event.interested || [],
     })));

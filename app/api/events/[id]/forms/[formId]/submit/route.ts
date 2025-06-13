@@ -73,9 +73,30 @@ export async function POST(
       updatedAt: new Date(),
     });
 
+    // If this is an RSVP form, also create an event registration
+    if (form.isRSVPForm) {
+      // Check if user already registered for the event
+      const existingRegistration = await db.collection('eventRegistrations').findOne({
+        eventId: new ObjectId(params.id),
+        userId: new ObjectId(session.user.id),
+      });
+
+      if (!existingRegistration) {
+        await db.collection('eventRegistrations').insertOne({
+          eventId: new ObjectId(params.id),
+          userId: new ObjectId(session.user.id),
+          userName: session.user.name,
+          userEmail: session.user.email,
+          registrationType: 'form',
+          formResponseId: response.insertedId,
+          createdAt: new Date(),
+        });
+      }
+    }
+
     return NextResponse.json({
       id: response.insertedId,
-      message: "Form submitted successfully",
+      message: form.isRSVPForm ? "Successfully registered for the event!" : "Form submitted successfully",
     });
   } catch (error) {
     console.error("Error submitting form:", error);

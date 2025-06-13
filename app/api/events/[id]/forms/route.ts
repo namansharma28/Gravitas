@@ -15,8 +15,12 @@ interface Form extends Document {
     type: string;
     required: boolean;
     options?: string[];
+    fileTypes?: string[];
+    maxFileSize?: number;
   }[];
   responses: FormResponse[];
+  isRSVPForm?: boolean;
+  isDirectRegistration?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +28,7 @@ interface Form extends Document {
 interface FormResponse extends Document {
   _id: ObjectId;
   formId: string;
+  eventId: ObjectId;
   userId: ObjectId;
   user?: {
     name: string;
@@ -33,6 +38,9 @@ interface FormResponse extends Document {
     fieldId: string;
     value: string | boolean | number;
   }[];
+  shortlisted?: boolean;
+  shortlistedAt?: Date;
+  shortlistedBy?: ObjectId;
   createdAt: Date;
 }
 
@@ -49,13 +57,20 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json();
-    const { title, description, fields, eventId } = data;
+    const { title, description, fields, eventId, isRSVPForm } = data;
 
     // Validate fields with options
     for (const field of fields) {
       if ((field.type === 'select' || field.type === 'checkbox') && (!field.options || field.options.length === 0)) {
         return NextResponse.json(
           { error: `Field "${field.label}" requires at least one option` },
+          { status: 400 }
+        );
+      }
+      
+      if (field.type === 'file' && (!field.fileTypes || field.fileTypes.length === 0)) {
+        return NextResponse.json(
+          { error: `File field "${field.label}" requires at least one file type` },
           { status: 400 }
         );
       }
@@ -96,6 +111,8 @@ export async function POST(request: Request) {
       fields,
       eventId,
       createdBy: session.user.id,
+      isRSVPForm: !!isRSVPForm,
+      isDirectRegistration: false,
       responses: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -108,6 +125,7 @@ export async function POST(request: Request) {
       fields,
       eventId,
       createdBy: session.user.id,
+      isRSVPForm: !!isRSVPForm,
       responses: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -200,6 +218,7 @@ export async function GET(
             email: user?.email || "No email",
           },
           answers: response.answers,
+          shortlisted: response.shortlisted || false,
           createdAt: response.createdAt,
         };
       }),
