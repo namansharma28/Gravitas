@@ -11,6 +11,7 @@ import { CalendarDays, Link as LinkIcon, MapPin, Pencil, Users, Calendar, Loader
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 interface UserProfile {
   id: string;
@@ -61,20 +62,26 @@ interface Event {
 }
 
 export default function ProfilePage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { toast } = useToast();
+  const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [communities, setCommunities] = useState<Community[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (status === "loading") return;
+    
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+
     if (session) {
       fetchProfileData();
-    } else {
-      setIsLoading(false);
     }
-  }, [session]);
+  }, [session, status, router]);
 
   const fetchProfileData = async () => {
     try {
