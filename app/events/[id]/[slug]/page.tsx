@@ -1,22 +1,21 @@
 import StructuredData from '@/components/seo/structured-data';
+import { Event } from '@/types/event';
 
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location?: string;
-  image?: string;
-  community: {
-    name: string;
-    handle: string;
-    avatar: string;
-  };
+async function getEvent(id: string): Promise<Event | null> {
+  try {
+    const response = await fetch(`${process.env.NEXTAUTH_URL}/api/events/${id}`, {
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    return null;
+  }
 }
 
-export default async function EventPage({ params }: { params: { id: string } }) {
-  // ... existing code ...
+export default async function EventPage({ params }: { params: { id: string; slug: string } }) {
+  const event = await getEvent(params.id);
 
   if (!event) {
     return null;
