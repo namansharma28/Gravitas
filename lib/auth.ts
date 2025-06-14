@@ -5,6 +5,10 @@ import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import clientPromise from "@/lib/mongodb";
 import bcrypt from "bcryptjs";
 
+// Admin credentials
+const ADMIN_EMAIL = "admin@gravitas.com";
+const ADMIN_PASSWORD = "Admin@123456";
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -23,6 +27,17 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          // Check if this is an admin login
+          if (credentials.email === ADMIN_EMAIL && credentials.password === ADMIN_PASSWORD) {
+            return {
+              id: "admin",
+              email: ADMIN_EMAIL,
+              name: "System Administrator",
+              role: "admin"
+            };
+          }
+
+          // Regular user login
           const client = await clientPromise;
           const db = client.db('gravitas');
           
@@ -51,6 +66,7 @@ export const authOptions: NextAuthOptions = {
             name: user.name,
             image: user.image,
             emailVerified: user.emailVerified,
+            role: user.role || "user",
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -103,6 +119,7 @@ export const authOptions: NextAuthOptions = {
       console.log("Session callback:", { session, token });
       if (session.user) {
         session.user.id = token.sub!;
+        session.user.role = token.role as string;
       }
       return session;
     },
@@ -110,11 +127,16 @@ export const authOptions: NextAuthOptions = {
       console.log("JWT callback:", { token, user, account });
       if (account && user) {
         token.id = user.id;
+        token.role = (user as any).role || "user";
       }
       return token;
     },
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback:", { url, baseUrl });
+      // Special case for admin dashboard
+      if (url.includes("/admin")) {
+        return url;
+      }
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       else if (new URL(url).origin === baseUrl) return url;
       return baseUrl;

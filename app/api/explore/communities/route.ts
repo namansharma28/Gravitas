@@ -9,9 +9,17 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db('gravitas');
 
-    // Get all communities with additional data
+    // Get all communities with additional data, filtering out pending communities
     const communities = await db.collection('communities')
       .aggregate([
+        {
+          $match: {
+            $or: [
+              { status: 'approved' },
+              { status: { $exists: false } } // For backward compatibility with existing communities
+            ]
+          }
+        },
         {
           $addFields: {
             membersCount: { $size: '$members' },
@@ -81,7 +89,8 @@ export async function GET() {
             isVerified: 1,
             createdAt: 1,
             userRelation: 1,
-            upcomingEventsCount: 1
+            upcomingEventsCount: 1,
+            status: 1
           }
         },
         { $sort: { membersCount: -1, followersCount: -1 } }

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Edit, Share2, Users, UserPlus, Heart } from "lucide-react";
+import { CalendarDays, Edit, Share2, Users, UserPlus, Heart, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CommunityHeaderProps {
@@ -20,6 +20,7 @@ interface CommunityHeaderProps {
     membersCount: number;
     followersCount: number;
     isVerified: boolean;
+    status?: string;
   };
   userPermissions: {
     isVisitor: boolean;
@@ -30,6 +31,8 @@ interface CommunityHeaderProps {
     canEdit: boolean;
     canCreateEvents: boolean;
     canFollow: boolean;
+    isPending?: boolean;
+    isRejected?: boolean;
   };
 }
 
@@ -76,6 +79,30 @@ export default function CommunityHeader({ community, userPermissions }: Communit
   };
 
   const getActionButtons = () => {
+    // If community is pending, show pending status
+    if (userPermissions.isPending) {
+      return (
+        <div className="flex gap-2">
+          <Badge variant="outline" className="flex items-center gap-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+            <AlertCircle className="h-3 w-3" />
+            Pending Approval
+          </Badge>
+        </div>
+      );
+    }
+
+    // If community is rejected, show rejected status
+    if (userPermissions.isRejected) {
+      return (
+        <div className="flex gap-2">
+          <Badge variant="outline" className="flex items-center gap-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+            <AlertCircle className="h-3 w-3" />
+            Rejected
+          </Badge>
+        </div>
+      );
+    }
+
     if (userPermissions.isVisitor) {
       return (
         <div className="flex gap-2">
@@ -159,6 +186,16 @@ export default function CommunityHeader({ community, userPermissions }: Communit
                 {community.isVerified && (
                   <Badge className="border-blue-300 bg-blue-500/10 text-white">
                     Verified
+                  </Badge>
+                )}
+                {community.status === 'pending' && (
+                  <Badge className="border-yellow-300 bg-yellow-500/10 text-white">
+                    Pending Approval
+                  </Badge>
+                )}
+                {community.status === 'rejected' && (
+                  <Badge className="border-red-300 bg-red-500/10 text-white">
+                    Rejected
                   </Badge>
                 )}
               </div>

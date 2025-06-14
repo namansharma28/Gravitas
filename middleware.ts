@@ -5,7 +5,27 @@ import type { NextRequest } from "next/server";
 export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request });
   const isAuthPage = request.nextUrl.pathname.startsWith("/auth");
+  const isAdminPage = request.nextUrl.pathname.startsWith("/admin");
+  
+  // Handle admin routes
+  if (isAdminPage) {
+    // Allow access to login page
+    if (request.nextUrl.pathname === "/admin/login") {
+      if (token && (token as any).role === "admin") {
+        return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+      }
+      return NextResponse.next();
+    }
+    
+    // Protect other admin routes
+    if (!token || (token as any).role !== "admin") {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    
+    return NextResponse.next();
+  }
 
+  // Handle auth pages
   if (isAuthPage) {
     if (token) {
       return NextResponse.redirect(new URL("/", request.url));
@@ -13,16 +33,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // const protectedPaths = ["/communities/create"];
-  // const isProtectedPath = protectedPaths.some(path => 
-  //   request.nextUrl.pathname.startsWith(path)
-  // );
-
-  // if (isProtectedPath && !token) {
-  //   const redirectUrl = new URL("/auth/signin", request.url);
-  //   redirectUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
-  //   return NextResponse.redirect(redirectUrl);
-  // }
-
   return NextResponse.next();
 }
+
+// See "Matching Paths" below to learn more
+export const config = {
+  matcher: ['/admin/:path*', '/auth/:path*'],
+};

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create new community
+    // Create new community with pending status
     const community = await db.collection('communities').insertOne({
       name,
       handle,
@@ -46,6 +46,19 @@ export async function POST(request: Request) {
       updates: [],
       followersCount: 0,
       isVerified: false,
+      status: 'pending', // Set status to pending
+      creatorId: session.user.id,
+      createdAt: new Date()
+    });
+
+    // Create notification for admin
+    await db.collection('adminNotifications').insertOne({
+      type: 'community_pending',
+      communityId: community.insertedId,
+      communityName: name,
+      communityHandle: handle,
+      creatorId: session.user.id,
+      read: false,
       createdAt: new Date()
     });
 
@@ -64,6 +77,7 @@ export async function POST(request: Request) {
       updates: [],
       followersCount: 0,
       isVerified: false,
+      status: 'pending',
       createdAt: new Date()
     });
   } catch (error: any) {

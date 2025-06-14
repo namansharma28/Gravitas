@@ -16,6 +16,17 @@ export async function GET(
       return NextResponse.json({ error: 'Community not found' }, { status: 404 });
     }
 
+    // If community is pending, only show to admins or the creator
+    if (community.status === 'pending') {
+      const session = await getServerSession(authOptions);
+      const isCreator = session?.user?.id === community.creatorId;
+      const isAdmin = community.admins.includes(session?.user?.id);
+      
+      if (!isCreator && !isAdmin) {
+        return NextResponse.json({ error: 'Community not found' }, { status: 404 });
+      }
+    }
+
     return NextResponse.json({
       id: community._id.toString(),
       name: community.name,
@@ -31,6 +42,7 @@ export async function GET(
       updates: community.updates,
       followersCount: community.followersCount,
       isVerified: community.isVerified,
+      status: community.status || 'approved', // Default for backward compatibility
       createdAt: community.createdAt
     });
   } catch (error: any) {

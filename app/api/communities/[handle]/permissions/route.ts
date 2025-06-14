@@ -18,6 +18,16 @@ export async function GET(
       return NextResponse.json({ error: 'Community not found' }, { status: 404 });
     }
 
+    // If community is pending, only show to admins or the creator
+    if (community.status === 'pending') {
+      const isCreator = session?.user?.id === community.creatorId;
+      const isAdmin = community.admins.includes(session?.user?.id);
+      
+      if (!isCreator && !isAdmin && (session?.user as any)?.role !== 'admin') {
+        return NextResponse.json({ error: 'Community not found' }, { status: 404 });
+      }
+    }
+
     // Check user's relationship with the community
     let userPermissions = {
       isVisitor: true,
@@ -34,6 +44,8 @@ export async function GET(
       canViewMembers: true,
       canFollow: false,
       canJoin: false,
+      isPending: community.status === 'pending',
+      isRejected: community.status === 'rejected',
     };
 
     if (session?.user?.id) {
@@ -42,6 +54,7 @@ export async function GET(
 
       const isMember = community.members.includes(session.user.id);
       const isAdmin = community.admins.includes(session.user.id);
+      const isSystemAdmin = (session.user as any)?.role === 'admin';
 
       // Check if user is following the community
       const followRecord = await db.collection('follows').findOne({
@@ -55,7 +68,7 @@ export async function GET(
       userPermissions.isFollower = isFollower;
 
       // Set permissions based on role
-      if (isAdmin) {
+      if (isAdmin || isSystemAdmin) {
         userPermissions.canEdit = true;
         userPermissions.canDelete = true;
         userPermissions.canCreateEvents = true;
@@ -85,6 +98,7 @@ export async function GET(
         membersCount: community.members.length,
         followersCount: community.followersCount || 0,
         isVerified: community.isVerified,
+        status: community.status || 'approved', // Default for backward compatibility
         createdAt: community.createdAt
       },
       userPermissions
