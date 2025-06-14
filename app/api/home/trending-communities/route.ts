@@ -13,6 +13,15 @@ export async function GET() {
     const trendingCommunities = await db.collection('communities')
       .aggregate([
         {
+          $match: {
+            $or: [
+              { status: 'approved' },
+              { status: { $exists: false } }
+            ],
+            status: { $ne: 'rejected' }
+          }
+        },
+        {
           $addFields: {
             membersCount: { $size: '$members' },
             // Calculate a score based on members, followers, and recent events

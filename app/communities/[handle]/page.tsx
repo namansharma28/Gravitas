@@ -13,6 +13,19 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StructuredData from '@/components/seo/structured-data';
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
+import { Calendar as CalendarIcon, Clock as ClockIcon, MapPin as MapPinIcon, Users as UsersIcon, Share2, ArrowLeft, Pencil, FileText, Mail, Trash2, QrCode, Eye } from "lucide-react";
+import UpdateCard from "@/components/events/update-card";
+import dynamic from "next/dynamic";
+
+// Dynamically import MD Viewer to avoid SSR issues
+const Markdown = dynamic(
+  () => import("@uiw/react-md-editor").then((mod) => mod.default.Markdown),
+  { ssr: false }
+);
 
 interface Community {
   id: string;
@@ -27,6 +40,7 @@ interface Community {
   followersCount: number;
   isVerified: boolean;
   createdAt: string;
+  status: string;
 }
 
 interface UserPermissions {
@@ -42,6 +56,7 @@ interface UserPermissions {
   canManageMembers: boolean;
   canViewMembers: boolean;
   canFollow: boolean;
+  isCreator: boolean;
 }
 
 interface Member {
@@ -65,6 +80,38 @@ interface Event {
   interested: string[];
 }
 
+interface Update {
+  id: string;
+  title: string;
+  content: string;
+  visibility: 'everyone' | 'members';
+  media: {
+    id: string;
+    url: string;
+    type: 'image' | 'video';
+    name: string;
+  }[];
+  documents: {
+    id: string;
+    url: string;
+    name: string;
+    size: number;
+  }[];
+  attachedForm: {
+    id: string;
+    title: string;
+    description: string;
+  } | null;
+  community: {
+    id: string;
+    name: string;
+    handle: string;
+    avatar: string;
+  };
+  comments: any[];
+  createdAt: string;
+}
+
 export default function CommunityPage({ params }: { params: { handle: string } }) {
   const { data: session } = useSession();
   const { toast } = useToast();
@@ -72,35 +119,62 @@ export default function CommunityPage({ params }: { params: { handle: string } }
   const [userPermissions, setUserPermissions] = useState<UserPermissions | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [updates, setUpdates] = useState<Update[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchCommunityData = async () => {
     try {
-      // Fetch community permissions and data
-      const permissionsResponse = await fetch(`/api/communities/${params.handle}/permissions`);
-      if (permissionsResponse.ok) {
-        const permissionsData = await permissionsResponse.json();
-        setCommunity(permissionsData.community);
-        setUserPermissions(permissionsData.userPermissions);
-      } else {
-        throw new Error('Community not found');
+      const [permissionsRes, membersRes, eventsRes, updatesRes] = await Promise.all([
+        fetch(`/api/communities/${params.handle}/permissions`),
+        fetch(`/api/communities/${params.handle}/members`),
+        fetch(`/api/communities/${params.handle}/events`),
+        fetch(`/api/communities/${params.handle}/updates`)
+      ]);
+
+      if (!permissionsRes.ok || !membersRes.ok || !eventsRes.ok || !updatesRes.ok) {
+        throw new Error('Failed to fetch community data');
       }
 
-      // Fetch member details if user has permission
-      const membersResponse = await fetch(`/api/communities/${params.handle}/members`);
-      if (membersResponse.ok) {
-        const memberData = await membersResponse.json();
-        setMembers(memberData);
-      }
+      const [permissionsData, membersData, eventsData, updatesData] = await Promise.all([
+        permissionsRes.json(),
+        membersRes.json(),
+        eventsRes.json(),
+        updatesRes.json()
+      ]);
 
-      // Fetch events
-      const eventsResponse = await fetch(`/api/communities/${params.handle}/events`);
-      if (eventsResponse.ok) {
-        const eventsData = await eventsResponse.json();
-        setEvents(eventsData);
-      }
+      // Set community data first
+      setCommunity(permissionsData.community);
+      setUserPermissions(permissionsData.userPermissions);
+      setMembers(membersData);
+      setEvents(eventsData);
+      
+      // Transform updates to match UpdateCard component's expected structure
+      const transformedUpdates = updatesData.map((update: any) => ({
+        id: update.id,
+        title: update.title || 'Community Update',
+        content: update.content,
+        visibility: update.visibility || 'everyone',
+        media: update.images?.map((url: string, index: number) => ({
+          id: `img-${index}`,
+          url,
+          type: 'image',
+          name: `Image ${index + 1}`
+        })) || [],
+        documents: update.documents || [],
+        attachedForm: update.attachedForm || null,
+        community: {
+          id: permissionsData.community.id,
+          name: permissionsData.community.name,
+          handle: permissionsData.community.handle,
+          avatar: permissionsData.community.avatar
+        },
+        comments: update.comments || [],
+        createdAt: update.createdAt
+      }));
+      
+      setUpdates(transformedUpdates);
     } catch (error) {
-      console.error('Error fetching community:', error);
+      console.error('Error fetching community data:', error);
       toast({
         title: "Error",
         description: "Failed to load community data",
@@ -128,9 +202,22 @@ export default function CommunityPage({ params }: { params: { handle: string } }
     return (
       <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
         <h1 className="text-3xl font-bold">Community Not Found</h1>
-        <p className="mb-6 text-muted-foreground">The community you&apos;re looking for doesn&apos;t exist.</p>
+        <p className="mb-6 text-muted-foreground">The community you&apos;re looking for doesn&apos;t exist or has been rejected.</p>
         <Button asChild>
           <Link href="/explore">Explore Communities</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // If community is rejected, show a message to the creator
+  if (community.status === 'rejected' && userPermissions.isCreator) {
+    return (
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
+        <h1 className="text-3xl font-bold">{community.name}</h1>
+        <p className="mb-6 text-muted-foreground">This community has been rejected.</p>
+        <Button asChild>
+          <Link href="/explore">Explore Other Communities</Link>
         </Button>
       </div>
     );
@@ -226,14 +313,47 @@ export default function CommunityPage({ params }: { params: { handle: string } }
                     </Button>
                   </Card>
                 ) : (
-                  <Card className="p-4 sm:p-8 text-center">
-                    <p className="text-muted-foreground">This community hasn&apos;t posted any updates yet.</p>
+                  <>
                     {userPermissions.canCreateUpdates && (
-                      <Button className="mt-4">
-                        <Plus className="mr-2 h-4 w-4" /> Create Update
-                      </Button>
+                      <div className="mb-4">
+                        <Button asChild>
+                          <Link href={`/communities/${community.handle}/updates/create`}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Update
+                          </Link>
+                        </Button>
+                      </div>
                     )}
-                  </Card>
+                    <div className="space-y-4">
+                      {updates.length > 0 ? (
+                        updates.map((update) => (
+                          <UpdateCard
+                            key={update.id}
+                            update={update}
+                            eventId={community.id}
+                            userPermissions={{
+                              isMember: userPermissions.isMember,
+                              isAdmin: userPermissions.isAdmin
+                            }}
+                          />
+                        ))
+                      ) : (
+                        <Card>
+                          <CardContent className="p-8 text-center">
+                            <p className="text-muted-foreground">No updates for this community yet.</p>
+                            {userPermissions.canCreateUpdates && (
+                              <Button className="mt-4" asChild>
+                                <Link href={`/communities/${community.handle}/updates/create`}>
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Create First Update
+                                </Link>
+                              </Button>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
               <div className="space-y-6">

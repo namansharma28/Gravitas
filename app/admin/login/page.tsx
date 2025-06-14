@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,37 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Shield, Loader2 } from "lucide-react";
-import { useSession } from "next-auth/react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { data: session } = useSession();
   const [credentials, setCredentials] = useState({
     username: "",
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-
-  // Check if admin is already logged in
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        const response = await fetch('/api/admin/check-auth');
-        const data = await response.json();
-        
-        if (data.isAdmin) {
-          setIsAdminLoggedIn(true);
-          router.push('/admin/dashboard');
-        }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-      }
-    };
-
-    checkAdminStatus();
-  }, [router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials({
@@ -63,19 +41,16 @@ export default function AdminLoginPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Store the JWT token
+        localStorage.setItem('adminToken', data.token);
+        
         toast({
           title: "Welcome to Admin Dashboard",
           description: "You have successfully logged in as an admin.",
         });
         
-        // Set a flag in localStorage to indicate admin is logged in
-        localStorage.setItem('adminAuthenticated', 'true');
-        
-        // Important: Add a small delay before redirecting to ensure the toast is shown
-        // and authentication state is properly set
-        setTimeout(() => {
-          router.push('/admin/dashboard');
-        }, 500);
+        // Use window.location for hard navigation
+        window.location.href = '/admin/dashboard';
       } else {
         toast({
           title: "Authentication Failed",
@@ -93,15 +68,6 @@ export default function AdminLoginPage() {
       setIsLoading(false);
     }
   };
-
-  if (isAdminLoggedIn) {
-    return (
-      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="mt-4 text-muted-foreground">Redirecting to admin dashboard...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">

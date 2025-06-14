@@ -20,7 +20,14 @@ export async function GET() {
           $match: {
             $or: [
               { admins: session.user.id },
-              { members: session.user.id }
+              { members: session.user.id },
+              // Include rejected communities only for their creators
+              {
+                $and: [
+                  { status: 'rejected' },
+                  { creatorId: session.user.id }
+                ]
+              }
             ]
           }
         },

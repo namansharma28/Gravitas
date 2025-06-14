@@ -9,7 +9,7 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db('gravitas');
 
-    // Get all communities with additional data, filtering out pending communities
+    // Get all communities with additional data, filtering out pending and rejected communities
     const communities = await db.collection('communities')
       .aggregate([
         {
@@ -17,7 +17,8 @@ export async function GET() {
             $or: [
               { status: 'approved' },
               { status: { $exists: false } } // For backward compatibility with existing communities
-            ]
+            ],
+            status: { $ne: 'rejected' } // Explicitly exclude rejected communities
           }
         },
         {

@@ -1,14 +1,25 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { adminAuthOptions } from '@/lib/admin-auth';
+import { headers } from 'next/headers';
+import { verify } from 'jsonwebtoken';
 import clientPromise from '@/lib/mongodb';
 
 export async function GET() {
   try {
-    const session = await getServerSession(adminAuthOptions);
+    const headersList = headers();
+    const authHeader = headersList.get('Authorization');
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
     
-    // Check if the user is an admin
-    if (!session || (session.user as any).role !== 'admin') {
+    try {
+      const decoded = verify(token, process.env.ADMIN_JWT_SECRET || 'admin-secret-key');
+      if (!decoded || (decoded as any).role !== 'admin') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    } catch (error) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -35,10 +46,10 @@ export async function GET() {
     }));
 
     return NextResponse.json(transformedCommunities);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching pending communities:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch pending communities' },
+      { error: 'Failed to fetch pending communities' },
       { status: 500 }
     );
   }

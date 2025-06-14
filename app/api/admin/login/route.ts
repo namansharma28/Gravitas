@@ -37,7 +37,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       success: true,
-      message: 'Admin authenticated successfully'
+      message: 'Admin authenticated successfully',
+      token
     });
   } catch (error) {
     console.error('Admin login error:', error);

@@ -36,11 +36,22 @@ export async function GET(request: Request) {
     // Search in communities
     const communities = await db.collection('communities')
       .find({
-        $or: [
-          { name: { $regex: query, $options: 'i' } },
-          { handle: { $regex: query, $options: 'i' } },
-          { description: { $regex: query, $options: 'i' } },
-        ],
+        $and: [
+          {
+            $or: [
+              { name: { $regex: query, $options: 'i' } },
+              { handle: { $regex: query, $options: 'i' } },
+              { description: { $regex: query, $options: 'i' } },
+            ]
+          },
+          {
+            $or: [
+              { status: 'approved' },
+              { status: { $exists: false } },
+              { status: 'pending' }
+            ]
+          }
+        ]
       })
       .project({ _id: 1, name: 1, handle: 1 })
       .limit(5)

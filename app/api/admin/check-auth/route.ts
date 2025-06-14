@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import { verify } from 'jsonwebtoken';
 
 export async function GET() {
   try {
-    // Get the admin token from cookies
-    const cookieStore = cookies();
-    const adminToken = cookieStore.get('admin_token');
+    const headersList = headers();
+    const authHeader = headersList.get('Authorization');
 
-    if (!adminToken?.value) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ isAdmin: false }, { status: 401 });
     }
 
-    // Verify the token
+    const token = authHeader.split(' ')[1];
+    
     try {
-      const decoded = verify(adminToken.value, process.env.ADMIN_JWT_SECRET || 'admin-secret-key');
+      const decoded = verify(token, process.env.ADMIN_JWT_SECRET || 'admin-secret-key');
       return NextResponse.json({ isAdmin: true });
     } catch (error) {
       return NextResponse.json({ isAdmin: false }, { status: 401 });

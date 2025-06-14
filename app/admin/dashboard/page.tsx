@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Users, CheckCircle, XCircle, Loader2, LogOut } from "lucide-react";
+import { Shield, Users, CheckCircle, XCircle, Loader2, LogOut, Calendar, BarChart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Table,
@@ -27,15 +27,59 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface PendingCommunity {
   id: string;
   name: string;
   handle: string;
   description: string;
-  creatorName: string;
-  creatorEmail: string;
+  avatar: string;
+  banner: string;
+  creatorId: string;
   createdAt: string;
+}
+
+interface DashboardStats {
+  totalUsers: number;
+  totalCommunities: number;
+  totalEvents: number;
+  totalRegistrations: number;
+  recentUsers: {
+    id: string;
+    name: string;
+    email: string;
+    createdAt: string;
+  }[];
+  monthlyGrowth: {
+    month: string;
+    users: number;
+  }[];
+}
+
+interface CommunityStats {
+  totalCommunities: number;
+  pendingCommunities: number;
+  approvedCommunities: number;
+  rejectedCommunities: number;
+  recentCommunities: {
+    id: string;
+    name: string;
+    handle: string;
+    status: string;
+    createdAt: string;
+  }[];
 }
 
 export default function AdminDashboardPage() {
@@ -45,79 +89,106 @@ export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingCommunities, setPendingCommunities] = useState<PendingCommunity[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [communityStats, setCommunityStats] = useState<CommunityStats | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(null);
+  const [isRejectionDialogOpen, setIsRejectionDialogOpen] = useState(false);
 
   useEffect(() => {
     const checkAdminAuth = async () => {
       try {
-        const response = await fetch('/api/admin/check-auth');
-        const data = await response.json();
-        
-        if (!data.isAdmin) {
+        const adminToken = localStorage.getItem('adminToken');
+        if (!adminToken) {
           router.push('/admin/login');
           return;
         }
-        
+
+        const response = await fetch('/api/admin/check-auth', {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        });
+
+        if (!response.ok) {
+          localStorage.removeItem('adminToken');
+          router.push('/admin/login');
+          return;
+        }
+
+        const data = await response.json();
+        if (!data.isAdmin) {
+          localStorage.removeItem('adminToken');
+          router.push('/admin/login');
+          return;
+        }
+
+        // If we get here, we're authenticated as admin
         setIsAdmin(true);
-        fetchPendingCommunities();
+        await fetchData();
       } catch (error) {
-        console.error('Error checking admin authentication:', error);
+        console.error('Error checking admin auth:', error);
+        localStorage.removeItem('adminToken');
         router.push('/admin/login');
       }
     };
 
-    // Also check localStorage for a quick client-side check
-    const isAdminAuthenticated = localStorage.getItem('adminAuthenticated') === 'true';
-    if (!isAdminAuthenticated) {
-      router.push('/admin/login');
-      return;
-    }
-
     checkAdminAuth();
   }, [router]);
 
-  const fetchPendingCommunities = async () => {
+  const fetchData = async () => {
     try {
-      // This would be a real API call in a complete implementation
-      // For now, we'll use mock data
-      const mockPendingCommunities: PendingCommunity[] = [
-        {
-          id: '1',
-          name: 'Tech Enthusiasts',
-          handle: 'tech-enthusiasts',
-          description: 'A community for tech lovers and enthusiasts',
-          creatorName: 'John Doe',
-          creatorEmail: 'john@example.com',
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: '2',
-          name: 'Art & Design',
-          handle: 'art-design',
-          description: 'For artists and designers to share their work and ideas',
-          creatorName: 'Jane Smith',
-          creatorEmail: 'jane@example.com',
-          createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: '3',
-          name: 'Fitness Club',
-          handle: 'fitness-club',
-          description: 'Stay fit and healthy with our community',
-          creatorName: 'Mike Johnson',
-          creatorEmail: 'mike@example.com',
-          createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-        },
-      ];
+      setIsLoading(true);
+      const adminToken = localStorage.getItem('adminToken');
+      if (!adminToken) {
+        router.push('/admin/login');
+        return;
+      }
 
-      setPendingCommunities(mockPendingCommunities);
-      setIsLoading(false);
+      const [pendingResponse, statsResponse, communityStatsResponse] = await Promise.all([
+        fetch('/api/admin/communities/pending', {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        }),
+        fetch('/api/admin/dashboard/stats', {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        }),
+        fetch('/api/admin/communities/stats', {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        })
+      ]);
+
+      if (!pendingResponse.ok || !statsResponse.ok || !communityStatsResponse.ok) {
+        if (pendingResponse.status === 401 || statsResponse.status === 401 || communityStatsResponse.status === 401) {
+          localStorage.removeItem('adminToken');
+          router.push('/admin/login');
+          return;
+        }
+        throw new Error('Failed to fetch data');
+      }
+
+      const [pendingData, statsData, communityStatsData] = await Promise.all([
+        pendingResponse.json(),
+        statsResponse.json(),
+        communityStatsResponse.json()
+      ]);
+
+      setPendingCommunities(pendingData);
+      setDashboardStats(statsData);
+      setCommunityStats(communityStatsData);
     } catch (error) {
-      console.error('Error fetching pending communities:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: "Error",
-        description: "Failed to load pending communities",
+        description: "Failed to load dashboard data. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -125,11 +196,23 @@ export default function AdminDashboardPage() {
   const handleApproveCommunity = async (id: string) => {
     setProcessingId(id);
     try {
-      // This would be a real API call in a complete implementation
-      // await fetch(`/api/admin/communities/${id}/approve`, { method: 'POST' });
+      const response = await fetch(`/api/admin/communities/approve/${id}`, { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to approve community');
+      }
       
-      // For now, just update the UI
+      // Update the UI
       setPendingCommunities(prev => prev.filter(community => community.id !== id));
+      
+      // Refresh stats
+      fetchData();
       
       toast({
         title: "Community Approved",
@@ -147,14 +230,37 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleRejectCommunity = async (id: string) => {
-    setProcessingId(id);
+  const openRejectDialog = (id: string) => {
+    setSelectedCommunityId(id);
+    setRejectionReason("");
+    setIsRejectionDialogOpen(true);
+  };
+
+  const handleRejectCommunity = async () => {
+    if (!selectedCommunityId) return;
+    
+    setProcessingId(selectedCommunityId);
+    setIsRejectionDialogOpen(false);
+    
     try {
-      // This would be a real API call in a complete implementation
-      // await fetch(`/api/admin/communities/${id}/reject`, { method: 'POST' });
+      const response = await fetch(`/api/admin/communities/reject/${selectedCommunityId}`, { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: rejectionReason })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reject community');
+      }
       
-      // For now, just update the UI
-      setPendingCommunities(prev => prev.filter(community => community.id !== id));
+      // Update the UI
+      setPendingCommunities(prev => prev.filter(community => community.id !== selectedCommunityId));
+      
+      // Refresh stats
+      fetchData();
       
       toast({
         title: "Community Rejected",
@@ -169,31 +275,45 @@ export default function AdminDashboardPage() {
       });
     } finally {
       setProcessingId(null);
+      setSelectedCommunityId(null);
     }
   };
 
-  const handleLogout = () => {
-    // Clear admin authentication
-    localStorage.removeItem('adminAuthenticated');
-    
-    // This would also clear the cookie in a complete implementation
-    // fetch('/api/admin/logout', { method: 'POST' });
-    
-    toast({
-      title: "Logged Out",
-      description: "You have been logged out of the admin dashboard",
-    });
-    
-    router.push('/admin/login');
+  const handleLogout = async () => {
+    try {
+      // Clear admin token
+      localStorage.removeItem('adminToken');
+      
+      // Call logout API to clear cookies
+      await fetch('/api/admin/logout', { method: 'POST' });
+      
+      toast({
+        title: "Logged Out",
+        description: "You have been logged out of the admin dashboard",
+      });
+      
+      router.push('/admin/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      });
+    }
   };
 
-  if (!isAdmin || isLoading) {
+  if (isLoading) {
     return (
       <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
         <Loader2 className="h-8 w-8 animate-spin" />
         <p className="mt-4 text-muted-foreground">Loading admin dashboard...</p>
       </div>
     );
+  }
+
+  if (!isAdmin) {
+    return null; // This will trigger the useEffect to redirect to login
   }
 
   return (
@@ -212,10 +332,42 @@ export default function AdminDashboardPage() {
         </Button>
       </div>
 
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <Users className="h-8 w-8 text-blue-500 mb-2" />
+            <CardTitle className="text-xl">{dashboardStats?.totalUsers || 0}</CardTitle>
+            <p className="text-sm text-muted-foreground">Total Users</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <Users className="h-8 w-8 text-purple-500 mb-2" />
+            <CardTitle className="text-xl">{communityStats?.totalCommunities || 0}</CardTitle>
+            <p className="text-sm text-muted-foreground">Communities</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <Calendar className="h-8 w-8 text-green-500 mb-2" />
+            <CardTitle className="text-xl">{dashboardStats?.totalEvents || 0}</CardTitle>
+            <p className="text-sm text-muted-foreground">Events</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <BarChart className="h-8 w-8 text-orange-500 mb-2" />
+            <CardTitle className="text-xl">{dashboardStats?.totalRegistrations || 0}</CardTitle>
+            <p className="text-sm text-muted-foreground">Registrations</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="pending">
-            Pending Approvals <Badge className="ml-2">{pendingCommunities.length}</Badge>
+            Pending Approvals <Badge className="ml-2">{communityStats?.pendingCommunities || 0}</Badge>
           </TabsTrigger>
           <TabsTrigger value="communities">Communities</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -244,7 +396,7 @@ export default function AdminDashboardPage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Handle</TableHead>
-                      <TableHead>Creator</TableHead>
+                      <TableHead>Description</TableHead>
                       <TableHead>Requested</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -254,11 +406,8 @@ export default function AdminDashboardPage() {
                       <TableRow key={community.id}>
                         <TableCell className="font-medium">{community.name}</TableCell>
                         <TableCell>@{community.handle}</TableCell>
-                        <TableCell>
-                          <div>
-                            <div>{community.creatorName}</div>
-                            <div className="text-sm text-muted-foreground">{community.creatorEmail}</div>
-                          </div>
+                        <TableCell className="max-w-xs truncate">
+                          {community.description}
                         </TableCell>
                         <TableCell>
                           {new Date(community.createdAt).toLocaleDateString()}
@@ -278,35 +427,15 @@ export default function AdminDashboardPage() {
                               Approve
                             </Button>
                             
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={processingId === community.id}
-                                >
-                                  <XCircle className="h-4 w-4 mr-1" />
-                                  Reject
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Reject Community</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to reject this community? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleRejectCommunity(community.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Reject
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openRejectDialog(community.id)}
+                              disabled={processingId === community.id}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -321,19 +450,77 @@ export default function AdminDashboardPage() {
         <TabsContent value="communities">
           <Card>
             <CardHeader>
-              <CardTitle>Approved Communities</CardTitle>
+              <CardTitle>Community Management</CardTitle>
               <CardDescription>
-                Manage existing communities on the platform
+                Overview of all communities on the platform
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center py-8">
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Community Management</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  This section will allow you to manage all approved communities
-                </p>
-                <Button disabled>Coming Soon</Button>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-6">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total</p>
+                        <p className="text-2xl font-bold">{communityStats?.totalCommunities || 0}</p>
+                      </div>
+                      <Users className="h-8 w-8 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Approved</p>
+                        <p className="text-2xl font-bold">{communityStats?.approvedCommunities || 0}</p>
+                      </div>
+                      <CheckCircle className="h-8 w-8 text-green-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Rejected</p>
+                        <p className="text-2xl font-bold">{communityStats?.rejectedCommunities || 0}</p>
+                      </div>
+                      <XCircle className="h-8 w-8 text-red-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Handle</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {communityStats?.recentCommunities?.map((community) => (
+                      <TableRow key={community.id}>
+                        <TableCell className="font-medium">{community.name}</TableCell>
+                        <TableCell>@{community.handle}</TableCell>
+                        <TableCell>
+                          {community.status === 'approved' ? (
+                            <Badge className="bg-green-500">Approved</Badge>
+                          ) : community.status === 'pending' ? (
+                            <Badge variant="outline" className="border-yellow-300 text-yellow-600">Pending</Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-red-300 text-red-600">Rejected</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{new Date(community.createdAt).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
@@ -348,18 +535,90 @@ export default function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center py-8">
-                <Shield className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Platform Settings</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  This section will allow you to configure platform-wide settings
-                </p>
-                <Button disabled>Coming Soon</Button>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Platform Settings</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="site-name">Site Name</Label>
+                        <Input id="site-name" defaultValue="Gravitas" disabled />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-email">Admin Email</Label>
+                        <Input id="admin-email" defaultValue="admin@gravitas.com" disabled />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="site-description">Site Description</Label>
+                      <Textarea 
+                        id="site-description" 
+                        defaultValue="A modern community event management platform" 
+                        disabled
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Security Settings</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="change-password">Change Admin Password</Label>
+                        <div className="flex gap-2">
+                          <Input id="change-password" type="password" placeholder="New password" disabled />
+                          <Button disabled>Update</Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button disabled>Save Settings</Button>
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Rejection Dialog */}
+      <Dialog open={isRejectionDialogOpen} onOpenChange={setIsRejectionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Community</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this community. This will be sent to the community creator.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejection-reason">Rejection Reason</Label>
+              <Textarea
+                id="rejection-reason"
+                placeholder="Enter reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRejectionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleRejectCommunity}
+              disabled={!rejectionReason.trim()}
+            >
+              Reject Community
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
