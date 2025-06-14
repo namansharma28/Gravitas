@@ -1,51 +1,87 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, EyeOff, Shield } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import Image from "next/image";
+import { Shield, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
+  const { data: session } = useSession();
+  const [credentials, setCredentials] = useState({
+    username: "",
     password: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
-  const handleAdminSignIn = async (e: React.FormEvent) => {
+  // Check if admin is already logged in
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const response = await fetch('/api/admin/check-auth');
+        const data = await response.json();
+        
+        if (data.isAdmin) {
+          setIsAdminLoggedIn(true);
+          router.push('/admin/dashboard');
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+
+    checkAdminStatus();
+  }, [router]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCredentials({
+      ...credentials,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Use the admin-specific endpoint
-      const result = await signIn("credentials", {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
       });
 
-      if (result?.error) {
+      const data = await response.json();
+
+      if (response.ok) {
         toast({
-          title: "Authentication Failed",
-          description: "Invalid admin credentials. Please try again.",
-          variant: "destructive",
-        });
-      } else if (result?.ok) {
-        toast({
-          title: "Authentication Successful",
-          description: "Welcome to the admin dashboard.",
+          title: "Welcome to Admin Dashboard",
+          description: "You have successfully logged in as an admin.",
         });
         
-        // Manually redirect to dashboard after successful login
-        router.push("/admin/dashboard");
+        // Set a flag in localStorage to indicate admin is logged in
+        localStorage.setItem('adminAuthenticated', 'true');
+        
+        // Important: Add a small delay before redirecting to ensure the toast is shown
+        // and authentication state is properly set
+        setTimeout(() => {
+          router.push('/admin/dashboard');
+        }, 500);
+      } else {
+        toast({
+          title: "Authentication Failed",
+          description: data.error || "Invalid username or password",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       toast({
@@ -58,103 +94,70 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
+  if (isAdminLoggedIn) {
+    return (
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="mt-4 text-muted-foreground">Redirecting to admin dashboard...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="container relative min-h-screen flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-1 lg:px-0">
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px] mt-20">
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="space-y-1">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Image
-                src="/logo.svg"
-                alt="Gravitas"
-                width={32}
-                height={32}
-                className="h-8 w-auto"
+    <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Shield className="h-8 w-8 text-primary" />
+            <span className="text-xl font-bold">Admin Access</span>
+          </div>
+          <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
+          <CardDescription className="text-center">
+            Enter your credentials to access the admin dashboard
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                name="username"
+                placeholder="Enter admin username"
+                value={credentials.username}
+                onChange={handleInputChange}
+                required
               />
-              <span className="text-xl font-bold">Gravitas</span>
             </div>
-            <CardTitle className="text-center text-2xl">
-              Admin Access
-            </CardTitle>
-            <CardDescription className="text-center">
-              Enter your credentials to access the admin dashboard
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={handleAdminSignIn} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">Email</label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="admin@gravitas.com"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">Password</label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                    <span>Authenticating...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    <span>Access Admin Panel</span>
-                  </div>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <div className="text-center text-sm text-muted-foreground">
-              <p>This area is restricted to system administrators only.</p>
-              <p className="mt-2 text-xs">Default credentials: admin@gravitas.com / Admin@123456</p>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Enter admin password"
+                value={credentials.password}
+                onChange={handleInputChange}
+                required
+              />
             </div>
-          </CardFooter>
-        </Card>
-      </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Authenticating...
+                </>
+              ) : (
+                "Access Dashboard"
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
