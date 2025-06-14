@@ -205,11 +205,11 @@ export default function ExplorePage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 px-4 sm:px-6">
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">Explore Communities</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Explore Communities</h1>
             <p className="text-muted-foreground">Discover and join communities that match your interests</p>
           </div>
           <Button asChild>
@@ -221,7 +221,7 @@ export default function ExplorePage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
@@ -284,7 +284,7 @@ export default function ExplorePage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredCommunities.map((community, index) => (
             <motion.div
               key={community._id}
@@ -315,7 +315,7 @@ export default function ExplorePage() {
                   </div>
                 </div>
 
-                <CardContent className="pt-8 pb-4">
+                <CardContent className="pt-8">
                   <div className="mb-3">
                     <div className="flex items-center gap-2 mb-1">
                       <Link href={`/communities/${community.handle}`} className="font-semibold hover:underline">
@@ -334,7 +334,7 @@ export default function ExplorePage() {
                     {community.description}
                   </p>
 
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-4">
                     <div className="flex items-center gap-1">
                       <Users className="h-3 w-3" />
                       <span>{community.membersCount} members</span>

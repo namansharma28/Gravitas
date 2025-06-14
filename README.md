@@ -317,23 +317,6 @@ We welcome contributions from the community! Here's how you can help:
 
 ---
 
-## 🌍 Internationalization
-
-### **Multi-language Support**
-- English (default)
-- Spanish
-- French
-- German
-- Portuguese
-
-### **Localization Features**
-- Date and time formatting
-- Currency formatting
-- Right-to-left language support
-- Cultural adaptations
-
----
-
 ## 📱 Mobile App
 
 ### **Progressive Web App**

@@ -144,9 +144,9 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <Navbar />
-            <div className="flex min-h-screen pt-16">
+            <div className="flex min-h-[calc(100vh-4rem)]">
               <Sidebar />
-              <main className="flex-1 px-2 pb-24 pt-6 md:px-4 md:pb-6 md:pl-28 lg:px-6">{children}</main>
+              <main className="flex-1 overflow-x-hidden px-2 pb-24 pt-6 md:px-4 md:pb-6 md:pl-28 lg:px-6">{children}</main>
             </div>
             <Toaster />
           </ThemeProvider>

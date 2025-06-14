@@ -65,7 +65,7 @@ interface Event {
   interested: string[];
 }
 
-export default async function CommunityPage({ params }: { params: { handle: string } }) {
+export default function CommunityPage({ params }: { params: { handle: string } }) {
   const { data: session } = useSession();
   const { toast } = useToast();
   const [community, setCommunity] = useState<Community | null>(null);
@@ -73,10 +73,6 @@ export default async function CommunityPage({ params }: { params: { handle: stri
   const [members, setMembers] = useState<Member[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchCommunityData();
-  }, [params.handle, toast]);
 
   const fetchCommunityData = async () => {
     try {
@@ -114,6 +110,10 @@ export default async function CommunityPage({ params }: { params: { handle: stri
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchCommunityData();
+  }, [params.handle, toast]);
 
   if (isLoading) {
     return (
