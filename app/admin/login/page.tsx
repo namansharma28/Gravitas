@@ -25,7 +25,6 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      // Use the admin-specific endpoint
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
@@ -44,8 +43,8 @@ export default function AdminLoginPage() {
           description: "Welcome to the admin dashboard.",
         });
         
-        // Manually redirect to dashboard after successful login
-        router.push("/admin/dashboard");
+        // Force a hard navigation to ensure session is properly set
+        window.location.href = "/admin/dashboard";
       }
     } catch (error) {
       toast({
