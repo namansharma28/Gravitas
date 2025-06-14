@@ -104,21 +104,20 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     // Check if user is admin
     if (status === "authenticated") {
-      const userRole = (session?.user as any)?.role;
-      if (userRole !== "admin") {
+      if ((session?.user as any)?.role !== "admin") {
         toast({
           title: "Unauthorized",
           description: "You don't have permission to access this page",
           variant: "destructive",
         });
-        window.location.href = "/";
+        router.push("/");
       } else {
         fetchDashboardData();
       }
     } else if (status === "unauthenticated") {
-      window.location.href = "/admin/login";
+      router.push("/admin/login");
     }
-  }, [session, status, toast]);
+  }, [session, status, router, toast]);
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -222,7 +221,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Show loading state while checking authentication
   if (status === "loading" || isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -231,9 +229,8 @@ export default function AdminDashboardPage() {
     );
   }
 
-  // Don't render anything if not authenticated or not admin
-  if (status !== "authenticated" || (session?.user as any)?.role !== "admin") {
-    return null;
+  if ((session?.user as any)?.role !== "admin") {
+    return null; // Will redirect in useEffect
   }
 
   return (
