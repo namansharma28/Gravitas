@@ -12,34 +12,22 @@ export async function middleware(request: NextRequest) {
     // Allow access to login page
     if (request.nextUrl.pathname === "/admin/login") {
       if (token && (token as any).role === "admin") {
-        // If admin is already logged in, redirect to dashboard
         return NextResponse.redirect(new URL("/admin/dashboard", request.url));
       }
-      // Allow access to login page for non-admin users
       return NextResponse.next();
     }
     
     // Protect other admin routes
-    if (!token) {
-      // If no token, redirect to login
-      const loginUrl = new URL("/admin/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    if ((token as any).role !== "admin") {
-      // If user is not admin, redirect to home
-      return NextResponse.redirect(new URL("/", request.url));
+    if (!token || (token as any).role !== "admin") {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
     }
     
-    // Allow access to admin routes for admin users
     return NextResponse.next();
   }
 
   // Handle auth pages
   if (isAuthPage) {
     if (token) {
-      // If user is already logged in, redirect to home
       return NextResponse.redirect(new URL("/", request.url));
     }
     return NextResponse.next();
