@@ -121,6 +121,8 @@ export default function AdminCommunitiesPage() {
     setProcessingId(id);
     try {
       const adminToken = localStorage.getItem('adminToken');
+      console.log('Admin token:', adminToken); // Debug log
+
       if (!adminToken) {
         toast({
           title: "Error",
@@ -131,6 +133,7 @@ export default function AdminCommunitiesPage() {
         return;
       }
 
+      console.log('Making request to:', `/api/admin/communities/approve/${id}`); // Debug log
       const response = await fetch(`/api/admin/communities/approve/${id}`, { 
         method: 'POST',
         headers: {
@@ -139,8 +142,10 @@ export default function AdminCommunitiesPage() {
         }
       });
 
+      console.log('Response status:', response.status); // Debug log
       if (!response.ok) {
         const error = await response.json();
+        console.error('Error response:', error); // Debug log
         throw new Error(error.error || 'Failed to approve community');
       }
       

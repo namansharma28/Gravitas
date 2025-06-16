@@ -11,19 +11,25 @@ export async function POST(
   try {
     const headersList = headers();
     const authHeader = headersList.get('Authorization');
+    console.log('Auth header:', authHeader); // Debug log
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No auth header or invalid format'); // Debug log
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.split(' ')[1];
+    console.log('Token:', token); // Debug log
     
     try {
       const decoded = verify(token, process.env.ADMIN_JWT_SECRET || 'admin-secret-key');
+      console.log('Decoded token:', decoded); // Debug log
       if (!decoded || (decoded as any).role !== 'admin') {
+        console.log('Invalid token or not admin role'); // Debug log
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     } catch (error) {
+      console.error('Token verification error:', error); // Debug log
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
