@@ -70,7 +70,19 @@ export default function AdminCommunitiesPage() {
   useEffect(() => {
     const checkAdminAuth = async () => {
       try {
-        const response = await fetch('/api/admin/check-auth');
+        const adminToken = localStorage.getItem('adminToken');
+        
+        if (!adminToken) {
+          router.push('/admin/login');
+          return;
+        }
+
+        const response = await fetch('/api/admin/check-auth', {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        });
+        
         const data = await response.json();
         
         if (!data.isAdmin) {
@@ -90,11 +102,26 @@ export default function AdminCommunitiesPage() {
 
   const fetchCommunities = async () => {
     try {
+      const adminToken = localStorage.getItem('adminToken');
+      
+      if (!adminToken) {
+        router.push('/admin/login');
+        return;
+      }
+
       // Fetch all communities
-      const allCommunitiesResponse = await fetch('/api/explore/communities');
+      const allCommunitiesResponse = await fetch('/api/explore/communities', {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      });
       
       // Fetch pending communities
-      const pendingCommunitiesResponse = await fetch('/api/admin/communities/pending');
+      const pendingCommunitiesResponse = await fetch('/api/admin/communities/pending', {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      });
       
       if (allCommunitiesResponse.ok) {
         const allCommunitiesData = await allCommunitiesResponse.json();
