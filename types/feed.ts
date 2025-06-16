@@ -12,8 +12,6 @@ export interface FeedItem {
   eventDate?: string;
   eventId?: string;
   eventTitle?: string;
-  likes: number;
-  comments: number;
   image?: string;
   tags?: string[];
 }

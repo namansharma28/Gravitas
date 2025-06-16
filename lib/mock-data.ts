@@ -16,8 +16,6 @@ export const mockFeedItems: FeedItem[] = [
       handle: 'tech-enthusiasts',
       avatar: 'https://github.com/shadcn.png'
     },
-    likes: 15,
-    comments: 5,
     image: 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg',
     tags: ['technology', 'networking', 'community']
   },
@@ -32,8 +30,6 @@ export const mockFeedItems: FeedItem[] = [
       handle: 'eventify-team',
       avatar: 'https://github.com/shadcn.png'
     },
-    likes: 25,
-    comments: 8,
     tags: ['announcement', 'features', 'updates']
   }
 ];

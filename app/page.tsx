@@ -335,26 +335,12 @@ export default function Home() {
                             <div className="flex items-center justify-between pt-4 border-t mt-4 border-border">
                               <div className="flex items-center gap-6">
                                 <button 
-                                  className="flex items-center gap-2 text-muted-foreground hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                                  className="flex items-center gap-2 text-muted-foreground hover:text-green-500 dark:hover:text-green-400 transition-colors"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <Heart className="h-4 w-4" />
-                                  <span className="text-sm">24</span>
-                                </button>
-                                <button 
-                                  className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <MessageCircle className="h-4 w-4" />
-                                  <span className="text-sm">8</span>
+                                  <Share2 className="h-4 w-4" />
                                 </button>
                               </div>
-                              <button 
-                                className="flex items-center gap-2 text-muted-foreground hover:text-green-500 dark:hover:text-green-400 transition-colors"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Share2 className="h-4 w-4" />
-                              </button>
                             </div>
                           </CardContent>
                         </Card>
