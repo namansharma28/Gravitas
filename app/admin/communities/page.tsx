@@ -120,10 +120,22 @@ export default function AdminCommunitiesPage() {
   const handleApproveCommunity = async (id: string) => {
     setProcessingId(id);
     try {
+      const adminToken = localStorage.getItem('adminToken');
+      if (!adminToken) {
+        toast({
+          title: "Error",
+          description: "Admin session expired. Please log in again.",
+          variant: "destructive",
+        });
+        router.push('/admin/login');
+        return;
+      }
+
       const response = await fetch(`/api/admin/communities/approve/${id}`, { 
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
         }
       });
 
