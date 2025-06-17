@@ -71,7 +71,7 @@ export default function AdminLoginPage() {
         description: "Welcome back, admin!",
       });
 
-      router.push('/admin/communities');
+      router.push('/admin/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred');

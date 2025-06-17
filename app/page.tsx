@@ -217,7 +217,7 @@ export default function Home() {
                     <Users className="h-16 w-16 md:h-20 md:w-20 text-blue-500 dark:text-blue-400 mx-auto mb-6" />
                     <h3 className="text-xl md:text-2xl font-bold mb-4">Join the Community</h3>
                     <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                      Sign in to see personalized updates from communities you follow and events you're interested in
+                      Sign in to see personalized updates from communities you follow and events you&apos;re interested in
                     </p>
                     <Button size="lg" asChild>
                       <Link href="/auth/signin">Sign In to Continue</Link>
