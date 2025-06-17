@@ -71,11 +71,9 @@ export default function AdminLoginPage() {
         description: "Welcome back, admin!",
       });
 
-      // Add a small delay before redirecting to ensure the token is properly stored
-      setTimeout(() => {
-        console.log('Redirecting to admin dashboard...'); // Debug log
-        router.push('/admin/communities');
-      }, 100);
+      // Use window.location.href for more reliable redirection
+      console.log('Redirecting to admin dashboard...'); // Debug log
+      window.location.href = '/admin/communities';
     } catch (error) {
       console.error('Login error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred');
