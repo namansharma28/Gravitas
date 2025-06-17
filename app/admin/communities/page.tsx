@@ -179,7 +179,7 @@ export default function AdminCommunitiesPage() {
       ]);
 
       setCommunities(allCommunitiesData);
-      setPendingCommunities(pendingCommunitiesData);
+        setPendingCommunities(pendingCommunitiesData);
     } catch (error) {
       console.error('Error fetching communities:', error);
       toast({
