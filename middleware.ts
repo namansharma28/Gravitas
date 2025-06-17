@@ -5,7 +5,7 @@ import { getToken } from 'next-auth/jwt';
 export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request });
   const isAuth = !!token;
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login');
+  const isAuthPage = request.nextUrl.pathname.startsWith('/auth');
 
   if (isAuthPage) {
     if (isAuth) {
@@ -21,11 +21,11 @@ export async function middleware(request: NextRequest) {
     }
 
     return NextResponse.redirect(
-      new URL(`/login?from=${encodeURIComponent(from)}`, request.url)
+      new URL(`/auth/login?from=${encodeURIComponent(from)}`, request.url)
     );
   }
 }
 
 export const config = {
-  matcher: ['/login', '/profile/:path*', '/communities/:path*', '/events/:path*']
+  matcher: ['/auth/:path*', '/profile/:path*', '/communities/:path*', '/events/:path*']
 };
