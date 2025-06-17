@@ -14,16 +14,6 @@ export async function middleware(request: NextRequest) {
     return null;
   }
 
-  if (!isAuth) {
-    let from = request.nextUrl.pathname;
-    if (request.nextUrl.search) {
-      from += request.nextUrl.search;
-    }
-
-    return NextResponse.redirect(
-      new URL(`/auth/signin?from=${encodeURIComponent(from)}`, request.url)
-    );
-  }
 }
 
 export const config = {
