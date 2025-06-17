@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
     }
 
     return NextResponse.redirect(
-      new URL(`/auth/login?from=${encodeURIComponent(from)}`, request.url)
+      new URL(`/auth/signin?from=${encodeURIComponent(from)}`, request.url)
     );
   }
 }
