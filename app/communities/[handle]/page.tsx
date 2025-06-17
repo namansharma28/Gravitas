@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Globe, MapPin, Calendar, Clock, Users, Plus } from "lucide-react";
+import { Globe, MapPin, Calendar, Clock, Users, Plus, CalendarDays } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CommunityHeader from "@/components/communities/community-header";
 import AddMemberDialog from "@/components/communities/add-member-dialog";
@@ -314,12 +314,12 @@ export default function CommunityPage({ params }: { params: { handle: string } }
                   </Card>
                 ) : (
                   <>
-                    {userPermissions.canCreateUpdates && (
+                    {userPermissions.canCreateEvents && (
                       <div className="mb-4">
                         <Button asChild>
-                          <Link href={`/communities/${community.handle}/updates/create`}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create Update
+                          <Link href={`/communities/${community.handle}/events/create`}>
+                            <CalendarDays className="mr-2 h-4 w-4" />
+                            Create Event
                           </Link>
                         </Button>
                       </div>
@@ -341,11 +341,11 @@ export default function CommunityPage({ params }: { params: { handle: string } }
                         <Card>
                           <CardContent className="p-8 text-center">
                             <p className="text-muted-foreground">No updates for this community yet.</p>
-                            {userPermissions.canCreateUpdates && (
+                            {userPermissions.canCreateEvents && (
                               <Button className="mt-4" asChild>
-                                <Link href={`/communities/${community.handle}/updates/create`}>
-                                  <Plus className="mr-2 h-4 w-4" />
-                                  Create First Update
+                                <Link href={`/communities/${community.handle}/events/create`}>
+                                  <CalendarDays className="mr-2 h-4 w-4" />
+                                  Create First Event
                                 </Link>
                               </Button>
                             )}

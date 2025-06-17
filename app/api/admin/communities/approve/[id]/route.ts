@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { verify } from 'jsonwebtoken';
-import clientPromise from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
+
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+}
+
+const client = new MongoClient(uri);
 
 export async function POST(
   request: Request,
@@ -10,81 +16,101 @@ export async function POST(
 ) {
   try {
     const headersList = headers();
-    const authHeader = headersList.get('Authorization');
-    console.log('Auth header:', authHeader); // Debug log
+    const authHeader = headersList.get('authorization');
+    console.log('Auth header in approve:', authHeader); // Debug log
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('No auth header or invalid format'); // Debug log
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('No auth header or invalid format in approve'); // Debug log
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     const token = authHeader.split(' ')[1];
-    console.log('Token:', token); // Debug log
-    
+    console.log('Token in approve:', token); // Debug log
+
+    if (!process.env.ADMIN_JWT_SECRET) {
+      console.error('ADMIN_JWT_SECRET is not defined');
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      );
+    }
+
     try {
-      const decoded = verify(token, process.env.ADMIN_JWT_SECRET || 'admin-secret-key');
-      console.log('Decoded token:', decoded); // Debug log
-      if (!decoded || (decoded as any).role !== 'admin') {
-        console.log('Invalid token or not admin role'); // Debug log
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const decoded = verify(token, process.env.ADMIN_JWT_SECRET);
+      console.log('Decoded token in approve:', decoded); // Debug log
+
+      if (!decoded || typeof decoded === 'string' || decoded.role !== 'admin') {
+        console.log('Invalid token or not admin in approve'); // Debug log
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
       }
+
+      const { id } = params;
+      if (!id || !ObjectId.isValid(id)) {
+        return NextResponse.json(
+          { error: 'Invalid community ID' },
+          { status: 400 }
+        );
+      }
+
+      await client.connect();
+      console.log('Connected to database in approve'); // Debug log
+
+      const db = client.db();
+      const community = await db.collection('communities').findOne({ _id: new ObjectId(id) });
+      console.log('Found community in approve:', community); // Debug log
+
+      if (!community) {
+        return NextResponse.json(
+          { error: 'Community not found' },
+          { status: 404 }
+        );
+      }
+
+      const result = await db.collection('communities').updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: 'approved' } }
+      );
+      console.log('Update result in approve:', result); // Debug log
+
+      if (result.modifiedCount === 0) {
+        return NextResponse.json(
+          { error: 'Failed to approve community' },
+          { status: 500 }
+        );
+      }
+
+      // Create notification for the community creator
+      if (community.creatorId) {
+        await db.collection('notifications').insertOne({
+          userId: community.creatorId,
+          type: 'community_approved',
+          message: `Your community "${community.name}" has been approved!`,
+          read: false,
+          createdAt: new Date(),
+          communityId: id
+        });
+      }
+
+      return NextResponse.json({ message: 'Community approved successfully' });
     } catch (error) {
-      console.error('Token verification error:', error); // Debug log
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.error('Token verification error in approve:', error);
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    } finally {
+      await client.close();
     }
-
-    if (!ObjectId.isValid(params.id)) {
-      return NextResponse.json({ error: 'Invalid community ID' }, { status: 400 });
-    }
-
-    const client = await clientPromise;
-    const db = client.db('gravitas');
-
-    // Find the community
-    const community = await db.collection('communities').findOne({
-      _id: new ObjectId(params.id)
-    });
-
-    if (!community) {
-      return NextResponse.json({ error: 'Community not found' }, { status: 404 });
-    }
-
-    // Update the community status
-    const result = await db.collection('communities').updateOne(
-      { _id: new ObjectId(params.id) },
-      { 
-        $set: { 
-          status: 'approved',
-          approvedAt: new Date(),
-          approvedBy: 'admin',
-          updatedAt: new Date()
-        } 
-      }
-    );
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Failed to update community' }, { status: 500 });
-    }
-
-    // Create a notification for the community creator
-    await db.collection('notifications').insertOne({
-      userId: community.creatorId || community.admins[0],
-      title: 'Community Approved',
-      description: `Your community "${community.name}" has been approved and is now public.`,
-      type: 'community',
-      linkUrl: `/communities/${community.handle}`,
-      read: false,
-      createdAt: new Date(),
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Community approved successfully'
-    });
-  } catch (error: any) {
-    console.error('Error approving community:', error);
+  } catch (error) {
+    console.error('Error in approve community:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to approve community' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

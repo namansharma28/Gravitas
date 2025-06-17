@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { sign } from 'jsonwebtoken';
-import { cookies } from 'next/headers';
 
 // Hardcoded admin credentials (in a real app, these would be stored securely)
 const ADMIN_USERNAME = 'admin';
@@ -8,40 +7,48 @@ const ADMIN_PASSWORD = 'admin123';
 
 export async function POST(request: Request) {
   try {
-    const { username, password } = await request.json();
+    const body = await request.json();
+    const { username, password } = body;
+
+    console.log('Login attempt for username:', username); // Debug log
 
     // Validate credentials
     if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-      return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
+      console.log('Invalid credentials'); // Debug log
+      return NextResponse.json(
+        { error: 'Invalid username or password' },
+        { status: 401 }
+      );
     }
 
-    // Create JWT token
+    // Create JWT token with admin role
+    if (!process.env.ADMIN_JWT_SECRET) {
+      console.error('ADMIN_JWT_SECRET is not defined');
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      );
+    }
+
     const token = sign(
-      { 
-        username,
-        role: 'admin',
-      },
-      process.env.ADMIN_JWT_SECRET || 'admin-secret-key',
+      { username, role: 'admin' },
+      process.env.ADMIN_JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    // Set cookie
-    const cookieStore = cookies();
-    cookieStore.set('admin_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24, // 24 hours
-      path: '/',
-      sameSite: 'strict',
-    });
+    console.log('Generated token:', token); // Debug log
 
-    return NextResponse.json({ 
-      success: true,
-      message: 'Admin authenticated successfully',
-      token
+    // Return the token and role
+    return NextResponse.json({
+      token,
+      role: 'admin',
+      message: 'Login successful'
     });
   } catch (error) {
-    console.error('Admin login error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Login error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

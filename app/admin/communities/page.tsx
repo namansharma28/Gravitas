@@ -53,6 +53,9 @@ interface Community {
   isVerified?: boolean;
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function AdminCommunitiesPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -73,6 +76,11 @@ export default function AdminCommunitiesPage() {
         const adminToken = localStorage.getItem('adminToken');
         
         if (!adminToken) {
+          toast({
+            title: "Error",
+            description: "Please log in as an admin first",
+            variant: "destructive",
+          });
           router.push('/admin/login');
           return;
         }
@@ -83,16 +91,39 @@ export default function AdminCommunitiesPage() {
           }
         });
         
+        if (!response.ok) {
+          localStorage.removeItem('adminToken');
+          toast({
+            title: "Session Expired",
+            description: "Your admin session has expired. Please log in again.",
+            variant: "destructive",
+          });
+          router.push('/admin/login');
+          return;
+        }
+
         const data = await response.json();
         
         if (!data.isAdmin) {
-          router.push('/admin/login');
+          localStorage.removeItem('adminToken');
+          toast({
+            title: "Access Denied",
+            description: "You must be an admin to access this page",
+            variant: "destructive",
+          });
+          router.push('/');
           return;
         }
         
         fetchCommunities();
       } catch (error) {
         console.error('Error checking admin authentication:', error);
+        localStorage.removeItem('adminToken');
+        toast({
+          title: "Error",
+          description: "Failed to verify admin status",
+          variant: "destructive",
+        });
         router.push('/admin/login');
       }
     };
@@ -105,6 +136,11 @@ export default function AdminCommunitiesPage() {
       const adminToken = localStorage.getItem('adminToken');
       
       if (!adminToken) {
+        toast({
+          title: "Error",
+          description: "Admin session expired. Please log in again.",
+          variant: "destructive",
+        });
         router.push('/admin/login');
         return;
       }
@@ -123,20 +159,32 @@ export default function AdminCommunitiesPage() {
         }
       });
       
-      if (allCommunitiesResponse.ok) {
-        const allCommunitiesData = await allCommunitiesResponse.json();
-        setCommunities(allCommunitiesData);
+      if (!allCommunitiesResponse.ok || !pendingCommunitiesResponse.ok) {
+        if (allCommunitiesResponse.status === 401 || pendingCommunitiesResponse.status === 401) {
+          localStorage.removeItem('adminToken');
+          toast({
+            title: "Session Expired",
+            description: "Your admin session has expired. Please log in again.",
+            variant: "destructive",
+          });
+          router.push('/admin/login');
+          return;
+        }
+        throw new Error('Failed to fetch communities');
       }
-      
-      if (pendingCommunitiesResponse.ok) {
-        const pendingCommunitiesData = await pendingCommunitiesResponse.json();
-        setPendingCommunities(pendingCommunitiesData);
-      }
+
+      const [allCommunitiesData, pendingCommunitiesData] = await Promise.all([
+        allCommunitiesResponse.json(),
+        pendingCommunitiesResponse.json()
+      ]);
+
+      setCommunities(allCommunitiesData);
+      setPendingCommunities(pendingCommunitiesData);
     } catch (error) {
       console.error('Error fetching communities:', error);
       toast({
         title: "Error",
-        description: "Failed to load communities",
+        description: error instanceof Error ? error.message : "Failed to load communities",
         variant: "destructive",
       });
     } finally {
@@ -148,6 +196,7 @@ export default function AdminCommunitiesPage() {
     setProcessingId(id);
     try {
       const adminToken = localStorage.getItem('adminToken');
+      console.log('Admin token from localStorage:', adminToken); // Debug log
 
       if (!adminToken) {
         toast({
@@ -159,6 +208,42 @@ export default function AdminCommunitiesPage() {
         return;
       }
 
+      // Verify admin status first
+      const verifyResponse = await fetch('/api/admin/check-auth', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      });
+
+      if (!verifyResponse.ok) {
+        console.log('Admin verification failed:', verifyResponse.status); // Debug log
+        localStorage.removeItem('adminToken');
+        toast({
+          title: "Session Expired",
+          description: "Your admin session has expired. Please log in again.",
+          variant: "destructive",
+        });
+        router.push('/admin/login');
+        return;
+      }
+
+      const verifyData = await verifyResponse.json();
+      console.log('Admin verification response:', verifyData); // Debug log
+
+      if (!verifyData.isAdmin) {
+        console.log('Not authorized as admin'); // Debug log
+        localStorage.removeItem('adminToken');
+        toast({
+          title: "Access Denied",
+          description: "You must be an admin to perform this action",
+          variant: "destructive",
+        });
+        router.push('/admin/login');
+        return;
+      }
+
+      console.log('Sending approve request with token:', adminToken); // Debug log
       const response = await fetch(`/api/admin/communities/approve/${id}`, { 
         method: 'POST',
         headers: {
@@ -167,7 +252,12 @@ export default function AdminCommunitiesPage() {
         }
       });
 
+      console.log('Approve response status:', response.status); // Debug log
+      const responseData = await response.json();
+      console.log('Approve response data:', responseData); // Debug log
+
       if (response.status === 401) {
+        localStorage.removeItem('adminToken');
         toast({
           title: "Session Expired",
           description: "Your admin session has expired. Please log in again.",
@@ -178,8 +268,7 @@ export default function AdminCommunitiesPage() {
       }
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to approve community');
+        throw new Error(responseData.error || 'Failed to approve community');
       }
       
       // Update the UI
@@ -218,6 +307,7 @@ export default function AdminCommunitiesPage() {
     
     try {
       const adminToken = localStorage.getItem('adminToken');
+      console.log('Admin token from localStorage:', adminToken); // Debug log
 
       if (!adminToken) {
         toast({
@@ -229,6 +319,42 @@ export default function AdminCommunitiesPage() {
         return;
       }
 
+      // Verify admin status first
+      const verifyResponse = await fetch('/api/admin/check-auth', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      });
+
+      if (!verifyResponse.ok) {
+        console.log('Admin verification failed:', verifyResponse.status); // Debug log
+        localStorage.removeItem('adminToken');
+        toast({
+          title: "Session Expired",
+          description: "Your admin session has expired. Please log in again.",
+          variant: "destructive",
+        });
+        router.push('/admin/login');
+        return;
+      }
+
+      const verifyData = await verifyResponse.json();
+      console.log('Admin verification response:', verifyData); // Debug log
+
+      if (!verifyData.isAdmin) {
+        console.log('Not authorized as admin'); // Debug log
+        localStorage.removeItem('adminToken');
+        toast({
+          title: "Access Denied",
+          description: "You must be an admin to perform this action",
+          variant: "destructive",
+        });
+        router.push('/admin/login');
+        return;
+      }
+
+      console.log('Sending reject request with token:', adminToken); // Debug log
       const response = await fetch(`/api/admin/communities/reject/${selectedCommunity.id}`, { 
         method: 'POST',
         headers: {
@@ -238,7 +364,12 @@ export default function AdminCommunitiesPage() {
         body: JSON.stringify({ reason: rejectionReason })
       });
 
+      console.log('Reject response status:', response.status); // Debug log
+      const responseData = await response.json();
+      console.log('Reject response data:', responseData); // Debug log
+
       if (response.status === 401) {
+        localStorage.removeItem('adminToken');
         toast({
           title: "Session Expired",
           description: "Your admin session has expired. Please log in again.",
@@ -249,8 +380,7 @@ export default function AdminCommunitiesPage() {
       }
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to reject community');
+        throw new Error(responseData.error || 'Failed to reject community');
       }
       
       // Update the UI
