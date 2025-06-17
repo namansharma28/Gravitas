@@ -76,55 +76,36 @@ export default function AdminCommunitiesPage() {
         const adminToken = localStorage.getItem('adminToken');
         
         if (!adminToken) {
-          toast({
-            title: "Error",
-            description: "Please log in as an admin first",
-            variant: "destructive",
-          });
-          router.push('/admin/login');
+          console.log('No admin token found, redirecting to login'); // Debug log
+          router.replace('/admin/login');
           return;
         }
 
+        console.log('Checking admin auth with token:', adminToken); // Debug log
         const response = await fetch('/api/admin/check-auth', {
           headers: {
             'Authorization': `Bearer ${adminToken}`
           }
         });
         
-        if (!response.ok) {
-          localStorage.removeItem('adminToken');
-          toast({
-            title: "Session Expired",
-            description: "Your admin session has expired. Please log in again.",
-            variant: "destructive",
-          });
-          router.push('/admin/login');
-          return;
-        }
-
+        console.log('Auth check response status:', response.status); // Debug log
         const data = await response.json();
-        
-        if (!data.isAdmin) {
+        console.log('Auth check response data:', data); // Debug log
+
+        if (!response.ok || !data.isAdmin) {
+          console.log('Auth check failed, removing token and redirecting'); // Debug log
           localStorage.removeItem('adminToken');
-          toast({
-            title: "Access Denied",
-            description: "You must be an admin to access this page",
-            variant: "destructive",
-          });
-          router.push('/');
+          router.replace('/admin/login');
           return;
         }
         
+        // If we get here, we're authenticated as admin
+        console.log('Admin auth successful, fetching communities'); // Debug log
         fetchCommunities();
       } catch (error) {
         console.error('Error checking admin authentication:', error);
         localStorage.removeItem('adminToken');
-        toast({
-          title: "Error",
-          description: "Failed to verify admin status",
-          variant: "destructive",
-        });
-        router.push('/admin/login');
+        router.replace('/admin/login');
       }
     };
 
@@ -136,15 +117,12 @@ export default function AdminCommunitiesPage() {
       const adminToken = localStorage.getItem('adminToken');
       
       if (!adminToken) {
-        toast({
-          title: "Error",
-          description: "Admin session expired. Please log in again.",
-          variant: "destructive",
-        });
-        router.push('/admin/login');
+        console.log('No admin token found during fetch, redirecting to login'); // Debug log
+        router.replace('/admin/login');
         return;
       }
 
+      console.log('Fetching communities with token:', adminToken); // Debug log
       // Fetch all communities
       const allCommunitiesResponse = await fetch('/api/explore/communities', {
         headers: {
@@ -159,15 +137,14 @@ export default function AdminCommunitiesPage() {
         }
       });
       
+      console.log('Communities response status:', allCommunitiesResponse.status); // Debug log
+      console.log('Pending communities response status:', pendingCommunitiesResponse.status); // Debug log
+
       if (!allCommunitiesResponse.ok || !pendingCommunitiesResponse.ok) {
         if (allCommunitiesResponse.status === 401 || pendingCommunitiesResponse.status === 401) {
+          console.log('Unauthorized response, removing token and redirecting'); // Debug log
           localStorage.removeItem('adminToken');
-          toast({
-            title: "Session Expired",
-            description: "Your admin session has expired. Please log in again.",
-            variant: "destructive",
-          });
-          router.push('/admin/login');
+          router.replace('/admin/login');
           return;
         }
         throw new Error('Failed to fetch communities');
@@ -178,8 +155,11 @@ export default function AdminCommunitiesPage() {
         pendingCommunitiesResponse.json()
       ]);
 
+      console.log('Fetched communities data:', allCommunitiesData); // Debug log
+      console.log('Fetched pending communities data:', pendingCommunitiesData); // Debug log
+
       setCommunities(allCommunitiesData);
-        setPendingCommunities(pendingCommunitiesData);
+      setPendingCommunities(pendingCommunitiesData);
     } catch (error) {
       console.error('Error fetching communities:', error);
       toast({
