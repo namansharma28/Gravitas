@@ -1,7 +1,6 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { cookies } from "next/headers";
 
 export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request });
@@ -11,15 +10,12 @@ export async function middleware(request: NextRequest) {
 
   // Handle admin routes
   if (isAdminPage && !isAdminLoginPage) {
-    // Check for admin token in cookies
-    const adminToken = request.cookies.get('admin_token');
+    // Check for admin token in Authorization header
+    const authHeader = request.headers.get('authorization');
     
-    if (!adminToken) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
-    
-    // In a real implementation, you would verify the token here
-    // For now, we'll just check if it exists
   }
 
   if (isAuthPage) {
@@ -33,14 +29,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/admin/:path*', '/auth/:path*']
 };
