@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bell, Search, X, Menu, CalendarDays, Loader2, Users } from "lucide-react";
+import { Search, X, Menu, CalendarDays, Loader2, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/layout/mode-toggle";
@@ -25,6 +25,7 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import NotificationBell from "@/components/notifications/notification-bell";
 import Image from 'next/image';
 
 interface Notification {
@@ -204,18 +205,6 @@ export default function Navbar() {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true });
     } catch (error) {
       return "recently";
-    }
-  };
-
-  // Get notification icon based on type
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'event':
-        return <CalendarDays className="h-4 w-4 text-blue-500" />;
-      case 'community':
-        return <Users className="h-4 w-4 text-purple-500" />;
-      default:
-        return <Bell className="h-4 w-4 text-gray-500" />;
     }
   };
 
@@ -410,69 +399,8 @@ export default function Navbar() {
           
           <ModeToggle />
           
-          {/* Notification Bell */}
-          <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                {hasNotifications && (
-                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" />
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="end">
-              <div className="flex items-center justify-between border-b p-3">
-                <h4 className="font-medium">Notifications</h4>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={markAllAsRead}
-                  className="text-xs h-8"
-                  disabled={!notifications.some(n => !n.read)}
-                >
-                  Mark all as read
-                </Button>
-              </div>
-              <div className="max-h-80 overflow-y-auto">
-                {isLoadingNotifications ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : notifications.length > 0 ? (
-                  notifications.map((notification) => (
-                    <div 
-                      key={notification.id}
-                      className={`p-3 border-b last:border-b-0 hover:bg-muted/50 cursor-pointer ${notification.read ? 'opacity-70' : ''}`}
-                      onClick={() => markAsRead(notification.id)}
-                    >
-                      <div className="flex items-start gap-2">
-                        <div className={`w-2 h-2 rounded-full mt-1.5 ${notification.read ? 'bg-transparent' : 'bg-primary'}`} />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1">
-                              {getNotificationIcon(notification.type)}
-                              <p className="font-medium text-sm">{notification.title}</p>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{formatNotificationTime(notification.createdAt)}</p>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">{notification.description}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center">
-                    <p className="text-muted-foreground">No notifications</p>
-                  </div>
-                )}
-              </div>
-              <div className="p-3 border-t text-center">
-                <Button variant="ghost" size="sm" className="w-full text-xs" asChild>
-                  <Link href="/settings">Manage notifications</Link>
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Notification Bell Component */}
+          <NotificationBell />
           
           {session ? (
             <DropdownMenu>
@@ -504,6 +432,11 @@ export default function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/settings" className="cursor-pointer">
                     Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/notifications" className="cursor-pointer">
+                    Notification Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

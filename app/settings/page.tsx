@@ -9,7 +9,7 @@ import Link from "next/link";
 import { 
   User, 
   Mail, 
-  Bell, 
+  BellRing, 
   Shield, 
   Palette, 
   Globe, 
@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -297,7 +297,9 @@ export default function SettingsPage() {
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="notifications" asChild>
+            <Link href="/settings/notifications">Notifications</Link>
+          </TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
@@ -435,29 +437,22 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Notification Preferences
+                <BellRing className="h-5 w-5" />
+                Notification Settings
               </CardTitle>
+              <CardDescription>
+                Manage your notification preferences
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {Object.entries(notifications).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm font-medium">
-                      {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      {getNotificationDescription(key as keyof NotificationSettings)}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={value}
-                    onCheckedChange={(checked) => 
-                      updateNotificationSetting(key as keyof NotificationSettings, checked)
-                    }
-                  />
-                </div>
-              ))}
+            <CardContent className="py-4 text-center">
+              <p className="text-muted-foreground mb-4">
+                Configure how and when you receive notifications
+              </p>
+              <Button asChild>
+                <Link href="/settings/notifications">
+                  Manage Notification Settings
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -538,15 +533,4 @@ export default function SettingsPage() {
       </Tabs>
     </div>
   );
-}
-
-function getNotificationDescription(key: keyof NotificationSettings): string {
-  const descriptions = {
-    eventReminders: "Get reminded about upcoming events you're registered for",
-    communityUpdates: "Receive updates from communities you follow",
-    newFollowers: "Get notified when someone follows you",
-    eventInvitations: "Receive invitations to events from communities",
-    weeklyDigest: "Get a weekly summary of activity in your communities",
-  };
-  return descriptions[key];
 }

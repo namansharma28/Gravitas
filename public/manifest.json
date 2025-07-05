@@ -77,5 +77,8 @@
       "url": "/communities",
       "icons": [{ "src": "/icons/community.png", "sizes": "192x192" }]
     }
+  ],
+  "permissions": [
+    "notifications"
   ]
 } 

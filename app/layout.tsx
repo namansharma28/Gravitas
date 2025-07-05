@@ -5,6 +5,7 @@ import localFont from 'next/font/local';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { Toaster } from "@/components/ui/toaster";
 import AuthProvider from '@/components/providers/session-provider';
+import { NotificationProvider } from '@/components/notifications/notification-provider';
 import Sidebar from '@/components/layout/sidebar';
 import Navbar from '@/components/layout/navbar';
 
@@ -170,12 +171,14 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <NotificationProvider>
             <Navbar />
             <div className="flex min-h-screen pt-16">
               <Sidebar />
               <main className="flex-1 overflow-x-hidden px-2 pb-24 pt-6 md:px-4 md:pb-6 md:pl-28 lg:px-6">{children}</main>
             </div>
             <Toaster />
+            </NotificationProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>
