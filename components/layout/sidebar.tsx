@@ -219,7 +219,7 @@ export default function Sidebar() {
 
   // Mobile bottom navbar
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 flex h-16 items-center justify-between rounded-lg border bg-background shadow-lg md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-t bg-background md:hidden">
       {sidebarLinks.slice(0, 5).map((link) => (
         <Link 
           key={link.href} 

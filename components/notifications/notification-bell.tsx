@@ -57,8 +57,10 @@ export default function NotificationBell() {
       </Popover>
 
       {showPermissionPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <NotificationPermissionPrompt onClose={() => setShowPermissionPrompt(false)} />
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16">
+          <div className="mt-8 max-h-[calc(100vh-8rem)] overflow-y-auto">
+            <NotificationPermissionPrompt onClose={() => setShowPermissionPrompt(false)} />
+          </div>
         </div>
       )}
     </>
