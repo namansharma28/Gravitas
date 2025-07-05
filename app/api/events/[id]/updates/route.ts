@@ -21,7 +21,8 @@ export async function POST(
       visibility, 
       media, 
       documents, 
-      attachedFormId 
+      attachedFormId,
+      targetFormId
     } = data;
 
     const client = await clientPromise;
@@ -54,21 +55,66 @@ export async function POST(
       return NextResponse.json({ error: 'Not authorized to create updates' }, { status: 403 });
     }
 
+    // If visibility is "shortlisted", validate that targetFormId is provided
+    if (visibility === "shortlisted" && !targetFormId) {
+      return NextResponse.json({ error: 'Target form ID is required for shortlisted visibility' }, { status: 400 });
+    }
+
+    // If targetFormId is provided, verify it exists
+    if (targetFormId) {
+      const formExists = await db.collection('forms').findOne({
+        _id: new ObjectId(targetFormId),
+        eventId: params.id
+      });
+
+      if (!formExists) {
+        return NextResponse.json({ error: 'Target form not found' }, { status: 404 });
+      }
+    }
+
     // Create update
     const update = await db.collection('updates').insertOne({
       eventId: params.id,
       communityId: event.communityId,
       title,
       content,
-      visibility, // 'everyone' or 'members'
+      visibility, // 'everyone', 'members', or 'shortlisted'
       media: media || [],
       documents: documents || [],
       attachedFormId: attachedFormId || null,
+      targetFormId: targetFormId || null, // Store the target form ID for shortlisted visibility
       createdBy: new ObjectId(session.user.id), // Store as ObjectId for proper lookup
       createdAt: new Date(),
       updatedAt: new Date(),
       comments: [],
     });
+
+    // If visibility is "shortlisted", create notifications for shortlisted participants
+    if (visibility === "shortlisted" && targetFormId) {
+      // Get all shortlisted participants for the target form
+      const shortlistedResponses = await db.collection('formResponses')
+        .find({
+          formId: new ObjectId(targetFormId),
+          eventId: new ObjectId(params.id),
+          shortlisted: true
+        })
+        .toArray();
+
+      // Create notifications for each shortlisted participant
+      const notifications = shortlistedResponses.map(response => ({
+        userId: response.userId.toString(),
+        title: `New update for ${event.title}`,
+        description: `${title} - You received this update because you were shortlisted`,
+        type: 'event',
+        linkUrl: `/updates/${update.insertedId}`,
+        read: false,
+        createdAt: new Date(),
+      }));
+
+      if (notifications.length > 0) {
+        await db.collection('notifications').insertMany(notifications);
+      }
+    }
 
     return NextResponse.json({
       id: update.insertedId,
@@ -78,6 +124,7 @@ export async function POST(
       media,
       documents,
       attachedFormId,
+      targetFormId,
       createdBy: session.user.id,
       createdAt: new Date(),
     });
@@ -142,14 +189,19 @@ export async function GET(
       if (!isMember && !isAdmin) {
         // Non-members can only see public updates
         visibilityFilter.visibility = 'everyone';
+      } else {
+        // Members and admins can see public and members-only updates
+        visibilityFilter.visibility = { $in: ['everyone', 'members'] };
+        
+        // For shortlisted updates, we need to check if the user is shortlisted in the target form
+        // We'll handle this with an additional filter below
       }
-      // Members and admins can see all updates (no additional filter needed)
     }
 
     console.log("[UPDATES_GET] Visibility filter:", visibilityFilter);
 
     // Get updates with community details
-    const updates = await db.collection('updates')
+    let updates = await db.collection('updates')
       .aggregate([
         { $match: visibilityFilter },
         {
@@ -175,6 +227,73 @@ export async function GET(
         { $sort: { createdAt: -1 } }
       ])
       .toArray();
+
+    // If user is logged in, check for shortlisted updates they should see
+    if (session?.user?.id) {
+      // Get shortlisted updates
+      const shortlistedUpdates = await db.collection('updates')
+        .aggregate([
+          { 
+            $match: { 
+              eventId: params.id,
+              visibility: 'shortlisted',
+              targetFormId: { $exists: true, $ne: null }
+            } 
+          },
+          {
+            $lookup: {
+              from: 'formResponses',
+              let: { 
+                targetFormId: { $toObjectId: "$targetFormId" },
+                userId: new ObjectId(session.user.id)
+              },
+              pipeline: [
+                { 
+                  $match: { 
+                    $expr: { 
+                      $and: [
+                        { $eq: ["$formId", "$$targetFormId"] },
+                        { $eq: ["$userId", "$$userId"] },
+                        { $eq: ["$shortlisted", true] }
+                      ]
+                    }
+                  }
+                }
+              ],
+              as: 'userShortlisted'
+            }
+          },
+          // Only include updates where the user is shortlisted
+          { $match: { "userShortlisted.0": { $exists: true } } },
+          {
+            $lookup: {
+              from: 'communities',
+              let: { communityId: { $toObjectId: "$communityId" } },
+              pipeline: [
+                { $match: { $expr: { $eq: ["$_id", "$$communityId"] } } }
+              ],
+              as: 'community'
+            }
+          },
+          {
+            $lookup: {
+              from: 'forms',
+              let: { formId: { $toObjectId: "$attachedFormId" } },
+              pipeline: [
+                { $match: { $expr: { $eq: ["$_id", "$$formId"] } } }
+              ],
+              as: 'attachedForm'
+            }
+          }
+        ])
+        .toArray();
+
+      // Combine with other updates
+      updates = [...updates, ...shortlistedUpdates];
+      
+      // Sort by creation date
+      updates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
 
     console.log("[UPDATES_GET] Found updates:", updates.length);
 

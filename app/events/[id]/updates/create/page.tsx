@@ -30,6 +30,7 @@ import {
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useDropzone } from "react-dropzone";
+import { useTheme } from "next-themes";
 
 // Dynamically import MD Editor to avoid SSR issues
 const MDEditor = dynamic(
@@ -40,8 +41,9 @@ const MDEditor = dynamic(
 const formSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title too long"),
   content: z.string().min(1, "Content is required"),
-  visibility: z.enum(["everyone", "members"]),
+  visibility: z.enum(["everyone", "members", "shortlisted"]),
   attachedFormId: z.string().optional(),
+  targetFormId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -70,12 +72,14 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
   const { data: session } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [content, setContent] = useState("");
   const [media, setMedia] = useState<MediaFile[]>([]);
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [showTargetFormField, setShowTargetFormField] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -84,6 +88,7 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
       content: "",
       visibility: "everyone",
       attachedFormId: "",
+      targetFormId: "",
     },
   });
 
@@ -103,6 +108,18 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
 
     fetchForms();
   }, [params.id]);
+
+  // Watch for visibility changes to show/hide target form field
+  const visibility = form.watch("visibility");
+  
+  useEffect(() => {
+    if (visibility === "shortlisted") {
+      setShowTargetFormField(true);
+    } else {
+      setShowTargetFormField(false);
+      form.setValue("targetFormId", "");
+    }
+  }, [visibility, form]);
 
   // Media upload dropzone
   const mediaDropzone = useDropzone({
@@ -224,6 +241,16 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
       return;
     }
 
+    // Validate that if visibility is "shortlisted", targetFormId is provided
+    if (data.visibility === "shortlisted" && !data.targetFormId) {
+      toast({
+        title: "Error",
+        description: "You must select a target form for shortlisted visibility",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -298,7 +325,7 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
 
             <div className="space-y-2">
               <Label>Content</Label>
-              <div className="min-h-[300px]">
+              <div className="min-h-[300px]" data-color-mode={theme === "dark" ? "dark" : "light"}>
                 <MDEditor
                   value={content}
                   onChange={(val) => {
@@ -307,7 +334,6 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
                   }}
                   preview="edit"
                   hideToolbar={false}
-                  data-color-mode="light"
                 />
               </div>
               {form.formState.errors.content && (
@@ -321,7 +347,7 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
               <Label>Visibility</Label>
               <RadioGroup
                 defaultValue="everyone"
-                onValueChange={(value) => form.setValue("visibility", value as "everyone" | "members")}
+                onValueChange={(value) => form.setValue("visibility", value as "everyone" | "members" | "shortlisted")}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="everyone" id="everyone" />
@@ -331,8 +357,41 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
                   <RadioGroupItem value="members" id="members" />
                   <Label htmlFor="members">Members Only - Only community members can see</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="shortlisted" id="shortlisted" />
+                  <Label htmlFor="shortlisted">Shortlisted - Only shortlisted participants from a specific form</Label>
+                </div>
               </RadioGroup>
             </div>
+
+            {showTargetFormField && (
+              <div className="space-y-2">
+                <Label htmlFor="targetFormId">Target Form (Required)</Label>
+                <Select 
+                  onValueChange={(value) => form.setValue("targetFormId", value)}
+                  value={form.watch("targetFormId")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a form" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {forms.map((formItem) => (
+                      <SelectItem key={formItem.id} value={formItem.id}>
+                        {formItem.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.formState.errors.targetFormId && (
+                  <p className="text-sm text-red-500">
+                    {form.formState.errors.targetFormId.message}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  This update will only be visible to participants who have been shortlisted in the selected form.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -347,12 +406,12 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
           <CardContent className="space-y-4">
             <div
               {...mediaDropzone.getRootProps()}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors dark:border-gray-700 dark:hover:border-gray-600"
             >
               <input {...mediaDropzone.getInputProps()} />
               <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <p className="text-lg font-medium">Drop media files here or click to upload</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Supports images (JPG, PNG, GIF) and videos (MP4, MOV, AVI) up to 50MB
               </p>
             </div>
@@ -368,9 +427,9 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
                         className="w-full h-32 object-cover rounded-lg"
                       />
                     ) : (
-                      <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <div className="w-full h-32 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
                         <Video className="h-8 w-8 text-gray-400" />
-                        <span className="ml-2 text-sm text-gray-600">{item.name}</span>
+                        <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">{item.name}</span>
                       </div>
                     )}
                     <Button
@@ -400,12 +459,12 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
           <CardContent className="space-y-4">
             <div
               {...documentDropzone.getRootProps()}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors"
+              className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors dark:border-gray-700 dark:hover:border-gray-600"
             >
               <input {...documentDropzone.getInputProps()} />
               <FileText className="mx-auto h-8 w-8 text-gray-400 mb-2" />
               <p className="font-medium">Drop documents here or click to upload</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Supports PDF, DOC, DOCX, TXT up to 10MB
               </p>
             </div>
@@ -413,12 +472,12 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
             {documents.length > 0 && (
               <div className="space-y-2">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg dark:border-gray-700">
                     <div className="flex items-center gap-3">
                       <FileText className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="font-medium">{doc.name}</p>
-                        <p className="text-sm text-gray-500">{formatFileSize(doc.size)}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{formatFileSize(doc.size)}</p>
                       </div>
                     </div>
                     <Button
@@ -499,7 +558,10 @@ export default function CreateUpdatePage({ params }: { params: { id: string } })
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting || (visibility === "shortlisted" && !form.watch("targetFormId"))}
+          >
             {isSubmitting ? "Creating..." : "Create Update"}
           </Button>
         </div>

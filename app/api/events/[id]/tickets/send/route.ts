@@ -89,6 +89,8 @@ export async function POST(
           emailMessage,
           includeQR,
           participantId: recipient.id,
+          formId: recipient.formId, // Include formId for form-specific QR codes
+          eventId: params.id,
         });
 
         results.push({
@@ -99,6 +101,7 @@ export async function POST(
         // Log the ticket send in database
         await db.collection('ticketSends').insertOne({
           eventId: new ObjectId(params.id),
+          formId: recipient.formId ? new ObjectId(recipient.formId) : null,
           recipientId: recipient.id,
           recipientEmail: recipient.email,
           recipientName: recipient.name,

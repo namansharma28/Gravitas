@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
       }
 
       // Store the admin token
-      localStorage.setItem('adminToken', data.token);
+        localStorage.setItem('adminToken', data.token);
       console.log('Admin token stored:', data.token); // Debug log
 
       // Verify admin status
@@ -66,7 +66,7 @@ export default function AdminLoginPage() {
         throw new Error('Failed to verify admin status');
       }
 
-      toast({
+        toast({
         title: "Login Successful",
         description: "Welcome back, admin!",
       });

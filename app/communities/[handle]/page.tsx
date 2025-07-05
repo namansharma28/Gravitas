@@ -121,6 +121,7 @@ export default function CommunityPage({ params }: { params: { handle: string } }
   const [events, setEvents] = useState<Event[]>([]);
   const [updates, setUpdates] = useState<Update[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("feed");
 
   const fetchCommunityData = async () => {
     try {
@@ -290,16 +291,19 @@ export default function CommunityPage({ params }: { params: { handle: string } }
           )}
         </div>
 
-        <Tabs defaultValue="feed" className="mt-6">
-          <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:w-[400px]">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+          <TabsList
+            className="mb-6 w-full overflow-x-auto whitespace-nowrap flex gap-2 px-2 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:w-[400px]"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
             {getTabsList().map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value}>
+              <TabsTrigger key={tab.value} value={tab.value} className="min-w-[90px]">
                 {tab.label}
               </TabsTrigger>
             ))}
           </TabsList>
 
-          <TabsContent value="feed" className="mt-0">
+          <TabsContent value="feed" className="mt-4">
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
               <div className="lg:col-span-2 space-y-4">
                 {userPermissions.isVisitor ? (
@@ -373,8 +377,8 @@ export default function CommunityPage({ params }: { params: { handle: string } }
             </div>
           </TabsContent>
 
-          <TabsContent value="events" className="mt-0">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <TabsContent value="events" className="mt-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {userPermissions.canCreateEvents && (
                 <Card className="p-6">
                   <CardContent className="flex flex-col items-center justify-center gap-4">
@@ -386,17 +390,16 @@ export default function CommunityPage({ params }: { params: { handle: string } }
                   </CardContent>
                 </Card>
               )}
-              
               {events.length > 0 ? (
                 events.map((event) => (
                   <Link key={event.id} href={`/events/${event.id}`}>
                     <Card className="transition-colors hover:bg-accent">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
-                          <div 
+                          <div
                             className="h-20 w-20 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600"
                             style={{
-                              backgroundImage: event.image 
+                              backgroundImage: event.image
                                 ? `url(${event.image})`
                                 : undefined,
                               backgroundSize: "cover",
@@ -430,7 +433,7 @@ export default function CommunityPage({ params }: { params: { handle: string } }
                   </Link>
                 ))
               ) : (
-                <Card className="p-8 text-center">
+                <Card className="p-8 text-center col-span-full">
                   <p className="text-muted-foreground">No events scheduled yet.</p>
                   {userPermissions.canCreateEvents && (
                     <Button className="mt-4" asChild>
@@ -445,14 +448,14 @@ export default function CommunityPage({ params }: { params: { handle: string } }
           </TabsContent>
 
           {userPermissions.canViewMembers && (
-            <TabsContent value="members" className="mt-0">
+            <TabsContent value="members" className="mt-4">
               <Card>
                 <CardContent className="p-6">
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-semibold">Members ({members.length})</h3>
                     {userPermissions.isAdmin && (
-                      <AddMemberDialog 
-                        communityHandle={community.handle} 
+                      <AddMemberDialog
+                        communityHandle={community.handle}
                         onMemberAdded={fetchCommunityData}
                       />
                     )}
@@ -483,7 +486,7 @@ export default function CommunityPage({ params }: { params: { handle: string } }
           )}
 
           {(userPermissions.isMember || userPermissions.isAdmin) && (
-            <TabsContent value="settings" className="mt-0">
+            <TabsContent value="settings" className="mt-4">
               <Card>
                 <CardContent className="p-6">
                   {userPermissions.isAdmin ? (
@@ -492,7 +495,7 @@ export default function CommunityPage({ params }: { params: { handle: string } }
                       <p className="text-sm text-muted-foreground">
                         Manage your community settings and permissions.
                       </p>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button asChild>
                           <Link href={`/communities/${community.handle}/edit`}>
                             Edit Community

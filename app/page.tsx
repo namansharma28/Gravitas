@@ -10,6 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useTheme } from "next-themes";
+import dynamic from "next/dynamic";
+
+// Dynamically import MD Viewer to avoid SSR issues
+const Markdown = dynamic(
+  () => import("@uiw/react-md-editor").then((mod) => mod.default.Markdown),
+  { ssr: false }
+);
 
 interface FeedItem {
   _id: string;
@@ -24,6 +32,7 @@ interface FeedItem {
   createdAt: string;
   eventDate?: string;
   eventId?: string;
+  eventTitle?: string;
   image?: string;
 }
 
@@ -55,6 +64,7 @@ interface TrendingCommunity {
 export default function Home() {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const { theme } = useTheme();
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [trendingCommunities, setTrendingCommunities] = useState<TrendingCommunity[]>([]);
@@ -177,7 +187,7 @@ export default function Home() {
         className="space-y-4 pb-8"
       >
         <div className="text-center space-y-4">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary via-blue-600 to-purple-600 dark:from-primary dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-[#91D6FF] via-blue-600 to-purple-600 dark:from-[#91D6FF] dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
             {session ? `Welcome back, ${session.user?.name?.split(' ')[0]}!` : 'Welcome to Gravitas'}
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -216,7 +226,7 @@ export default function Home() {
                   >
                     <Users className="h-16 w-16 md:h-20 md:w-20 text-blue-500 dark:text-blue-400 mx-auto mb-6" />
                     <h3 className="text-xl md:text-2xl font-bold mb-4">Join the Community</h3>
-                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
                       Sign in to see personalized updates from communities you follow and events you&apos;re interested in
                     </p>
                     <Button size="lg" asChild>
@@ -233,7 +243,7 @@ export default function Home() {
                   >
                     <CalendarDays className="h-16 w-16 md:h-20 md:w-20 text-purple-500 dark:text-purple-400 mx-auto mb-6" />
                     <h3 className="text-xl md:text-2xl font-bold mb-4">Your Feed Awaits</h3>
-                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
                       Follow some communities to see their latest updates and events here
                     </p>
                     <Button size="lg" asChild>
@@ -257,7 +267,7 @@ export default function Home() {
                         <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 shadow-md">
                           {item.type === "event" && item.image && (
                             <div 
-                              className="relative h-40 md:h-48 w-full bg-gradient-to-r from-blue-500 to-purple-600"
+                              className="relative h-40 md:h-48 w-full bg-gradient-to-r from-[#91D6FF] to-purple-600"
                               style={{
                                 backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${item.image})`,
                                 backgroundSize: "cover",
@@ -290,7 +300,7 @@ export default function Home() {
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10 ring-2 ring-primary/10">
                                   <AvatarImage src={item.community.avatar} />
-                                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                                  <AvatarFallback className="bg-gradient-to-br from-[#91D6FF] to-purple-500 text-white">
                                     {item.community.name.substring(0, 2)}
                                   </AvatarFallback>
                                 </Avatar>
@@ -314,9 +324,11 @@ export default function Home() {
                               <h4 className="text-xl font-bold mb-3">{item.title}</h4>
                             )}
 
-                            <p className="text-foreground/80 dark:text-foreground/90 leading-relaxed line-clamp-3 mb-4">
-                              {item.content}
-                            </p>
+                            <div className="prose prose-sm max-w-none dark:prose-invert mb-4">
+                              <div data-color-mode={theme === "dark" ? "dark" : "light"}>
+                                <Markdown source={item.content.length > 200 ? item.content.substring(0, 200) + "..." : item.content} />
+                              </div>
+                            </div>
 
                             {item.eventId && item.type === "update" && (
                               <Link 
@@ -326,7 +338,7 @@ export default function Home() {
                               >
                                 <div className="mt-4 p-4 rounded-lg bg-muted border hover:border-primary/30 transition-colors">
                                   <p className="text-sm font-medium text-primary mb-1">📅 Related Event</p>
-                                  <p className="font-semibold">{item.title}</p>
+                                  <p className="font-semibold">{item.eventTitle}</p>
                                 </div>
                               </Link>
                             )}
@@ -376,7 +388,7 @@ export default function Home() {
               </CardHeader>
               <CardContent className="p-0">
                 {upcomingEvents.length === 0 ? (
-                  <div className="text-center py-8 px-4 md:px-6">
+                  <div className="flex flex-col items-center justify-center py-8 px-4 md:px-6">
                     <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-3">No upcoming events</p>
                     <Button asChild size="sm">
@@ -398,7 +410,7 @@ export default function Home() {
                         >
                           <div className="flex items-center gap-3">
                             <div 
-                              className="h-12 w-12 md:h-14 md:w-14 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 flex-shrink-0 flex items-center justify-center"
+                              className="h-12 w-12 md:h-14 md:w-14 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
                               style={{
                                 backgroundImage: event.image 
                                   ? `url(${event.image})`
@@ -468,7 +480,7 @@ export default function Home() {
               </CardHeader>
               <CardContent className="p-0">
                 {trendingCommunities.length === 0 ? (
-                  <div className="text-center py-8 px-4 md:px-6">
+                  <div className="flex flex-col items-center justify-center py-8 px-4 md:px-6">
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-3">No trending communities</p>
                     <Button asChild size="sm">
@@ -487,7 +499,7 @@ export default function Home() {
                       >
                         <Avatar className="ring-2 ring-primary/10">
                           <AvatarImage src={community.avatar} />
-                          <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white">
+                          <AvatarFallback className="bg-gradient-to-br from-[#91D6FF] to-pink-500 text-white">
                             {community.name.substring(0, 2)}
                           </AvatarFallback>
                         </Avatar>
@@ -540,14 +552,14 @@ export default function Home() {
           >
             <Card className="overflow-hidden shadow-lg">
               <CardContent className="p-4 md:p-6 text-center">
-                <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-primary to-purple-500 dark:from-primary dark:to-purple-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-[#91D6FF] to-purple-500 dark:from-[#91D6FF] dark:to-purple-400 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="h-7 w-7 md:h-8 md:w-8 text-primary-foreground" />
                 </div>
                 <h3 className="font-bold text-lg mb-2">Start Your Community</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Create a space for people who share your interests and passions
                 </p>
-                <Button asChild className="w-full bg-gradient-to-r from-primary to-purple-500 dark:from-primary dark:to-purple-400 hover:from-primary/90 hover:to-purple-500/90 dark:hover:from-primary/90 dark:hover:to-purple-400/90 text-primary-foreground">
+                <Button asChild className="w-full bg-gradient-to-r from-[#91D6FF] to-purple-500 dark:from-[#91D6FF] dark:to-purple-400 hover:from-[#91D6FF]/90 hover:to-purple-500/90 dark:hover:from-[#91D6FF]/90 dark:hover:to-purple-400/90 text-primary-foreground">
                   <Link href="/communities/create">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Community

@@ -69,6 +69,8 @@ export async function POST(
       eventId: new ObjectId(params.id),
       userId: new ObjectId(session.user.id),
       answers,
+      shortlisted: false,
+      checkedIn: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

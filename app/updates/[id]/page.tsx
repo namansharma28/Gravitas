@@ -9,14 +9,15 @@ import {
   Download, 
   Eye, 
   Users, 
-  ArrowLeft,
+  Pencil,
   ChevronLeft,
   ChevronRight,
-  Pencil
+  ArrowLeft,
+  CheckSquare
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -28,6 +29,7 @@ import {
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
+import { useTheme } from "next-themes";
 
 // Dynamically import MD Viewer to avoid SSR issues
 const Markdown = dynamic(
@@ -39,7 +41,7 @@ interface Update {
   id: string;
   title: string;
   content: string;
-  visibility: 'everyone' | 'members';
+  visibility: 'everyone' | 'members' | 'shortlisted';
   media: {
     id: string;
     url: string;
@@ -67,6 +69,7 @@ interface Update {
   createdAt: string;
   eventId: string;
   eventTitle: string;
+  targetFormId?: string;
   userPermissions?: {
     canEdit: boolean;
   };
@@ -76,8 +79,10 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const { theme } = useTheme();
   const [update, setUpdate] = useState<Update | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -150,9 +155,13 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
     if (!update || selectedMediaIndex === null) return;
     
     if (direction === 'prev') {
-      setSelectedMediaIndex(selectedMediaIndex > 0 ? selectedMediaIndex - 1 : update.media.length - 1);
+      const newIndex = selectedMediaIndex > 0 ? selectedMediaIndex - 1 : update.media.length - 1;
+      setSelectedMediaIndex(newIndex);
+      setSelectedMedia(update.media[newIndex].url);
     } else {
-      setSelectedMediaIndex(selectedMediaIndex < update.media.length - 1 ? selectedMediaIndex + 1 : 0);
+      const newIndex = selectedMediaIndex < update.media.length - 1 ? selectedMediaIndex + 1 : 0;
+      setSelectedMediaIndex(newIndex);
+      setSelectedMedia(update.media[newIndex].url);
     }
   };
 
@@ -204,11 +213,16 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
                   </Link>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>{timeAgo}</span>
-                    <Badge variant={update.visibility === 'members' ? 'secondary' : 'outline'}>
+                    <Badge variant={update.visibility !== 'everyone' ? 'secondary' : 'outline'}>
                       {update.visibility === 'members' ? (
                         <>
                           <Users className="w-3 h-3 mr-1" />
                           Members Only
+                        </>
+                      ) : update.visibility === 'shortlisted' ? (
+                        <>
+                          <CheckSquare className="w-3 h-3 mr-1" />
+                          Shortlisted Only
                         </>
                       ) : (
                         <>
@@ -243,8 +257,8 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
             </div>
 
             {/* Content */}
-            <div className="prose prose-lg max-w-none">
-              <div data-color-mode="light">
+            <div className="prose prose-lg max-w-none dark:prose-invert">
+              <div data-color-mode={theme === "dark" ? "dark" : "light"}>
                 <Markdown source={update.content} />
               </div>
             </div>
@@ -258,7 +272,10 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
                     <div 
                       key={item.id} 
                       className="relative group cursor-pointer rounded-lg overflow-hidden"
-                      onClick={() => setSelectedMediaIndex(index)}
+                      onClick={() => {
+                        setSelectedMediaIndex(index);
+                        setSelectedMedia(item.url);
+                      }}
                     >
                       {item.type === 'image' ? (
                         <img
@@ -267,12 +284,12 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
                           className="w-full h-48 object-cover transition-transform group-hover:scale-105"
                         />
                       ) : (
-                        <div className="w-full h-48 bg-gray-100 flex items-center justify-center transition-transform group-hover:scale-105">
+                        <div className="w-full h-48 bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-transform group-hover:scale-105">
                           <div className="text-center">
                             <div className="w-12 h-12 mx-auto mb-2 bg-blue-500 rounded-full flex items-center justify-center">
                               <span className="text-white text-lg">▶</span>
                             </div>
-                            <span className="text-sm text-gray-600">{item.name}</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-300">{item.name}</span>
                           </div>
                         </div>
                       )}
@@ -291,12 +308,12 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
                 <h3 className="text-lg font-semibold">Documents</h3>
                 <div className="grid gap-3">
                   {update.documents.map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors dark:border-gray-700">
                       <div className="flex items-center gap-3">
                         <FileText className="h-6 w-6 text-gray-400" />
                         <div>
                           <p className="font-medium">{doc.name}</p>
-                          <p className="text-sm text-gray-500">{formatFileSize(doc.size)}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{formatFileSize(doc.size)}</p>
                         </div>
                       </div>
                       <Button 
@@ -317,9 +334,9 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
             {update.attachedForm && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Registration Form</h3>
-                <div className="p-6 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                <div className="p-6 border rounded-lg bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900/50">
                   <div className="flex items-start gap-4">
-                    <FileText className="h-6 w-6 text-blue-600 mt-1" />
+                    <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400 mt-1" />
                     <div className="flex-1">
                       <h4 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-2">
                         {update.attachedForm.title}
@@ -355,14 +372,14 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Media Viewer Dialog with Navigation */}
-      <Dialog open={selectedMediaIndex !== null} onOpenChange={() => setSelectedMediaIndex(null)}>
+      <Dialog open={selectedMedia !== null} onOpenChange={() => setSelectedMedia(null)}>
         <DialogContent className="max-w-6xl">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Media Viewer</span>
-              {update.media.length > 1 && (
+              {update.media.length > 1 && selectedMediaIndex !== null && (
                 <span className="text-sm text-muted-foreground">
-                  {(selectedMediaIndex || 0) + 1} of {update.media.length}
+                  {selectedMediaIndex + 1} of {update.media.length}
                 </span>
               )}
             </DialogTitle>

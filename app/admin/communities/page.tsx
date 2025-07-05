@@ -91,7 +91,7 @@ export default function AdminCommunitiesPage() {
         console.log('Auth check response status:', response.status); // Debug log
         const data = await response.json();
         console.log('Auth check response data:', data); // Debug log
-
+        
         if (!response.ok || !data.isAdmin) {
           console.log('Auth check failed, removing token and redirecting'); // Debug log
           localStorage.removeItem('adminToken');
@@ -159,7 +159,7 @@ export default function AdminCommunitiesPage() {
       console.log('Fetched pending communities data:', pendingCommunitiesData); // Debug log
 
       setCommunities(allCommunitiesData);
-      setPendingCommunities(pendingCommunitiesData);
+        setPendingCommunities(pendingCommunitiesData);
     } catch (error) {
       console.error('Error fetching communities:', error);
       toast({

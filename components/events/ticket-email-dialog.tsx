@@ -20,6 +20,7 @@ import { Mail, QrCode, Ticket } from "lucide-react";
 
 interface FormResponse {
   id: string;
+  formId?: string;
   user: {
     name: string;
     email: string;
@@ -107,6 +108,7 @@ The Event Team`,
         body: JSON.stringify({
           recipients: selectedResponses.map(r => ({
             id: r.id,
+            formId: r.formId, // Include formId for form-specific QR codes
             name: r.user.name,
             email: r.user.email,
           })),
@@ -214,8 +216,8 @@ The Event Team`,
                   <strong>QR Code Feature:</strong>
                 </p>
                 <p className="mt-1">
-                  Each participant will receive a unique QR code that volunteers can scan to verify their identity 
-                  and check them in at the event. The QR code contains the participant's name and registration details.
+                  Each participant will receive a unique QR code that contains their form submission details.
+                  This QR code can be scanned at the event to verify their identity and mark them as checked in.
                 </p>
               </div>
             )}

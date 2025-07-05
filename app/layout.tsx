@@ -1,4 +1,5 @@
 import './globals.css';
+import '../styles/md-editor.css'; // Import custom MD Editor styles
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/ui/theme-provider';

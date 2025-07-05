@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Share2, FileText, Download, Eye, Users, Pencil } from "lucide-react";
+import { Share2, FileText, Download, Eye, Users, Pencil, CheckSquare } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useTheme } from "next-themes";
 
 // Dynamically import MD Viewer to avoid SSR issues
 const Markdown = dynamic(
@@ -27,7 +28,7 @@ interface Update {
   id: string;
   title: string;
   content: string;
-  visibility: 'everyone' | 'members';
+  visibility: 'everyone' | 'members' | 'shortlisted';
   media: {
     id: string;
     url: string;
@@ -66,6 +67,7 @@ interface UpdateCardProps {
 
 export default function UpdateCard({ update, eventId, userPermissions }: UpdateCardProps) {
   const { toast } = useToast();
+  const { theme } = useTheme();
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
 
   const timeAgo = formatDistanceToNow(new Date(update.createdAt), { addSuffix: true });
@@ -141,14 +143,14 @@ export default function UpdateCard({ update, eventId, userPermissions }: UpdateC
               />
             ) : (
               <div 
-                className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center"
+                className="w-full h-32 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"
                 onClick={() => setSelectedMedia(item.url)}
               >
                 <div className="text-center">
                   <div className="w-8 h-8 mx-auto mb-1 bg-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">▶</span>
                   </div>
-                  <span className="text-xs text-gray-600">{item.name}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-300">{item.name}</span>
                 </div>
               </div>
             )}
@@ -179,11 +181,16 @@ export default function UpdateCard({ update, eventId, userPermissions }: UpdateC
                 </Link>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>{timeAgo}</span>
-                  <Badge variant={update.visibility === 'members' ? 'secondary' : 'outline'} className="text-xs">
+                  <Badge variant={update.visibility !== 'everyone' ? 'secondary' : 'outline'} className="text-xs">
                     {update.visibility === 'members' ? (
                       <>
                         <Users className="w-3 h-3 mr-1" />
                         Members Only
+                      </>
+                    ) : update.visibility === 'shortlisted' ? (
+                      <>
+                        <CheckSquare className="w-3 h-3 mr-1" />
+                        Shortlisted Only
                       </>
                     ) : (
                       <>
@@ -210,8 +217,8 @@ export default function UpdateCard({ update, eventId, userPermissions }: UpdateC
             <h3 className="text-lg font-semibold mb-3 hover:text-primary">{update.title}</h3>
           </Link>
           
-          <div className="prose prose-sm max-w-none">
-            <div data-color-mode="light">
+          <div className="prose prose-sm max-w-none dark:prose-invert">
+            <div data-color-mode={theme === "dark" ? "dark" : "light"}>
               <Markdown source={update.content.length > 200 ? update.content.substring(0, 200) + "..." : update.content} />
             </div>
           </div>
@@ -229,12 +236,12 @@ export default function UpdateCard({ update, eventId, userPermissions }: UpdateC
             <div className="mt-4 space-y-2">
               <h4 className="text-sm font-medium text-muted-foreground">Attachments</h4>
               {update.documents.slice(0, 2).map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg dark:border-gray-700">
                   <div className="flex items-center gap-3">
                     <FileText className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="font-medium text-sm">{doc.name}</p>
-                      <p className="text-xs text-gray-500">{formatFileSize(doc.size)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{formatFileSize(doc.size)}</p>
                     </div>
                   </div>
                   <Button 
@@ -256,9 +263,9 @@ export default function UpdateCard({ update, eventId, userPermissions }: UpdateC
 
           {/* Attached Form */}
           {update.attachedForm && (
-            <div className="mt-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+            <div className="mt-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900/50">
               <div className="flex items-start gap-3">
-                <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                 <div className="flex-1">
                   <h4 className="font-medium text-blue-900 dark:text-blue-100">
                     {update.attachedForm.title}

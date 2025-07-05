@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ParticipantShortlistDialog from "@/components/events/participant-shortlist-dialog";
 import TicketEmailDialog from "@/components/events/ticket-email-dialog";
+import Link from "next/link";
 
 interface Form {
   id: string;
@@ -71,6 +72,8 @@ interface FormResponse {
   }[];
   createdAt: string;
   shortlisted?: boolean;
+  checkedIn?: boolean;
+  checkedInAt?: string;
 }
 
 export default function FormsPage({ params }: { params: { id: string } }) {
@@ -242,7 +245,7 @@ export default function FormsPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="container mx-auto py-8">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Registration Forms</h1>
           <p className="mt-2 text-muted-foreground">
@@ -272,10 +275,12 @@ export default function FormsPage({ params }: { params: { id: string } }) {
           {forms.map((form) => (
             <Card key={form.id}>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      <span>{form.title}</span>
+                      <Link href={`/events/${params.id}/forms/${form.id}`} className="hover:underline">
+                        {form.title}
+                      </Link>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
@@ -352,19 +357,25 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                       {form.description}
                     </p>
                   </div>
+                  <Button asChild variant="outline">
+                    <Link href={`/events/${params.id}/forms/${form.id}`}>
+                      View Details
+                    </Link>
+                  </Button>
                 </div>
               </CardHeader>
 
               <CardContent>
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>{form.fields.length} fields</span>
                     <span>{form.responses.length} responses</span>
                     <span>{form.responses.filter(r => r.shortlisted).length} shortlisted</span>
+                    <span>{form.responses.filter(r => r.checkedIn).length} checked in</span>
                   </div>
                   
                   {form.responses.length > 0 && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -373,6 +384,17 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                       >
                         <Download className="mr-2 h-4 w-4" />
                         {exportingFormId === form.id ? "Exporting..." : "Export Excel"}
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                      >
+                        <Link href={`/events/${params.id}/forms/${form.id}/scan`}>
+                          <QrCode className="mr-2 h-4 w-4" />
+                          Scan QR Codes
+                        </Link>
                       </Button>
 
                       {selectedResponses.size > 0 && (
@@ -385,19 +407,22 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                             trigger={
                               <Button variant="outline" size="sm">
                                 <CheckSquare className="mr-2 h-4 w-4" />
-                                Shortlist ({selectedResponses.size})
+                                Shortlist ({getSelectedResponsesForForm(form.id).length})
                               </Button>
                             }
                           />
                           
                           <TicketEmailDialog
                             eventId={params.id}
-                            selectedResponses={getSelectedResponsesForForm(form.id)}
+                            selectedResponses={getSelectedResponsesForForm(form.id).map(r => ({
+                              ...r,
+                              formId: form.id // Add formId to each response
+                            }))}
                             onSuccess={handleTicketSuccess}
                             trigger={
                               <Button size="sm">
                                 <Mail className="mr-2 h-4 w-4" />
-                                Send Tickets ({selectedResponses.size})
+                                Send Tickets ({getSelectedResponsesForForm(form.id).length})
                               </Button>
                             }
                           />
@@ -413,7 +438,7 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                     <p className="text-muted-foreground">No responses yet</p>
                   </div>
                 ) : (
-                  <div className="rounded-md border">
+                  <div className="rounded-md border overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -424,10 +449,11 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                             />
                           </TableHead>
                           <TableHead>Participant</TableHead>
-                          {form.fields.slice(0, 3).map((field) => (
+                          {form.fields.slice(0, 2).map((field) => (
                             <TableHead key={field.id}>{field.label}</TableHead>
                           ))}
                           <TableHead>Status</TableHead>
+                          <TableHead>Check-in</TableHead>
                           <TableHead>Submitted</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -450,7 +476,7 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                                 </div>
                               </div>
                             </TableCell>
-                            {form.fields.slice(0, 3).map((field) => {
+                            {form.fields.slice(0, 2).map((field) => {
                               const answer = response.answers.find(
                                 (a) => a.fieldId === field.id
                               );
@@ -468,6 +494,17 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                               ) : (
                                 <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
                                   Pending
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {response.checkedIn ? (
+                                <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                                  Checked In
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                                  Not Checked In
                                 </span>
                               )}
                             </TableCell>

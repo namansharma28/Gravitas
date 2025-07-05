@@ -71,6 +71,12 @@ export async function GET() {
                       { visibility: 'members' },
                       { communityId: { $in: userCommunities.map(c => c._id.toString()) } }
                     ]
+                  },
+                  {
+                    $and: [
+                      { visibility: 'shortlisted' },
+                      { targetFormId: { $exists: true } }
+                    ]
                   }
                 ]
               }
@@ -86,11 +92,41 @@ export async function GET() {
               }
             },
             { $unwind: '$community' },
+            {
+              $lookup: {
+                from: 'events',
+                let: { eventId: { $toObjectId: '$eventId' } },
+                pipeline: [
+                  { $match: { $expr: { $eq: ['$_id', '$$eventId'] } } }
+                ],
+                as: 'event'
+              }
+            },
             { $sort: { createdAt: -1 } },
             { $limit: 10 }
           ])
           .toArray()
       ]);
+
+      // For shortlisted updates, filter to only include those where user is shortlisted
+      const filteredUpdates = await Promise.all(updates.map(async (update) => {
+        if (update.visibility === 'shortlisted' && update.targetFormId) {
+          try {
+            // Check if user is shortlisted in this form
+            const isShortlisted = await db.collection('formResponses').findOne({
+              formId: new ObjectId(update.targetFormId),
+              userId: new ObjectId(session.user.id),
+              shortlisted: true
+            });
+            
+            return isShortlisted ? update : null;
+          } catch (error) {
+            console.error('Error checking shortlist status:', error);
+            return null;
+          }
+        }
+        return update;
+      }));
 
       // Combine and format feed items
       feedItems = [
@@ -108,7 +144,7 @@ export async function GET() {
           eventDate: `${event.date} • ${event.time}`,
           image: event.image,
         })),
-        ...updates.map(update => ({
+        ...filteredUpdates.filter((u): u is NonNullable<typeof u> => Boolean(u)).map(update => ({
           _id: update._id.toString(),
           type: 'update' as const,
           title: update.title,
@@ -120,6 +156,7 @@ export async function GET() {
           },
           createdAt: update.createdAt,
           eventId: update.eventId,
+          eventTitle: update.event && update.event[0] ? update.event[0].title : "Event",
         }))
       ];
     } else {
@@ -177,6 +214,16 @@ export async function GET() {
               }
             },
             { $unwind: '$community' },
+            {
+              $lookup: {
+                from: 'events',
+                let: { eventId: { $toObjectId: '$eventId' } },
+                pipeline: [
+                  { $match: { $expr: { $eq: ['$_id', '$$eventId'] } } }
+                ],
+                as: 'event'
+              }
+            },
             { $sort: { createdAt: -1 } },
             { $limit: 5 }
           ])
@@ -211,6 +258,7 @@ export async function GET() {
           },
           createdAt: update.createdAt,
           eventId: update.eventId,
+          eventTitle: update.event && update.event[0] ? update.event[0].title : "Event",
         }))
       ];
     }

@@ -115,7 +115,7 @@ export default function CommunityHeader({ community, userPermissions }: Communit
 
     if (userPermissions.isAdmin) {
       return (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={() => router.push(`/communities/${community.handle}/edit`)}>
             <Edit className="mr-2 h-4 w-4" />
             Edit Community
@@ -164,7 +164,7 @@ export default function CommunityHeader({ community, userPermissions }: Communit
 
   return (
     <div className="mb-6 space-y-6">
-      <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 md:h-64">
+      <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-r from-[#91D6FF] to-purple-600 md:h-64">
         {community.banner && (
           <img
             src={community.banner}
@@ -173,13 +173,13 @@ export default function CommunityHeader({ community, userPermissions }: Communit
           />
         )}
         <div className="absolute inset-x-0 bottom-0 flex items-end p-6">
-          <div className="relative flex items-end">
-            <Avatar className="h-24 w-24 border-4 border-background">
+          <div className="relative flex flex-col md:flex-row md:items-end">
+            <Avatar className="h-20 w-20 border-4 border-background md:h-24 md:w-24">
               <AvatarImage src={community.avatar} />
               <AvatarFallback>{community.name.substring(0, 2)}</AvatarFallback>
             </Avatar>
-            <div className="ml-6 pb-3">
-              <div className="flex items-center gap-2">
+            <div className="mt-3 md:ml-6 md:mt-0 md:pb-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-bold text-white md:text-3xl">
                   {community.name}
                 </h1>
@@ -206,7 +206,7 @@ export default function CommunityHeader({ community, userPermissions }: Communit
       </div>
 
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-4 md:gap-6">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
             <span>{community.membersCount} members</span>
@@ -221,7 +221,7 @@ export default function CommunityHeader({ community, userPermissions }: Communit
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
           {getActionButtons()}
           <Button variant="outline" size="icon">
             <Share2 className="h-4 w-4" />

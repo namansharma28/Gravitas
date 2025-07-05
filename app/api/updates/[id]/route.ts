@@ -78,6 +78,31 @@ export async function GET(
       if (!isMember && !isAdmin) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 });
       }
+    } else if (update.visibility === 'shortlisted') {
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      // Check if user is shortlisted in the target form
+      if (update.targetFormId) {
+        const isShortlisted = await db.collection('formResponses').findOne({
+          formId: new ObjectId(update.targetFormId),
+          userId: new ObjectId(session.user.id),
+          shortlisted: true
+        });
+
+        if (!isShortlisted) {
+          // Also allow admins and event creator to view
+          const isAdmin = community?.admins.includes(session.user.id);
+          const isCreator = event?.creatorId === session.user.id;
+          
+          if (!isAdmin && !isCreator) {
+            return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+          }
+        }
+      } else {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
     }
 
     // Check if user can edit this update
@@ -111,6 +136,7 @@ export async function GET(
       createdAt: update.createdAt,
       eventId: update.eventId,
       eventTitle: event?.title || 'Unknown Event',
+      targetFormId: update.targetFormId,
       userPermissions: {
         canEdit,
       },

@@ -242,12 +242,6 @@ export default function CalendarPage() {
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Calendar</h1>
             <p className="text-muted-foreground">Keep track of all your upcoming events</p>
           </div>
-          <Button asChild>
-            <Link href="/communities/create">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Community
-            </Link>
-          </Button>
         </div>
       </div>
 
