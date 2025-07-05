@@ -1,14 +1,40 @@
 import './globals.css';
 import '../styles/md-editor.css'; // Import custom MD Editor styles
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { Toaster } from "@/components/ui/toaster";
 import AuthProvider from '@/components/providers/session-provider';
 import Sidebar from '@/components/layout/sidebar';
 import Navbar from '@/components/layout/navbar';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+// Use local Inter font files to avoid network timeouts
+const inter = localFont({
+  src: [
+    {
+      path: '../public/fonts/Inter-Regular.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/Inter-Medium.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/Inter-SemiBold.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/Inter-Bold.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
