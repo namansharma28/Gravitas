@@ -18,7 +18,9 @@ import {
   Save,
   Loader2,
   Upload,
-  X
+  X,
+  Download,
+  Smartphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +94,11 @@ export default function SettingsPage() {
     weeklyDigest: false,
   });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  
+  // PWA Installation state
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isPWAInstalled, setIsPWAInstalled] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -110,6 +117,87 @@ export default function SettingsPage() {
       setIsLoading(false);
     }
   }, [session]);
+
+  // PWA Installation effect
+  useEffect(() => {
+    // Check if PWA is already installed
+    const checkPWAInstallation = () => {
+      if (typeof window !== 'undefined') {
+        // Check if running in standalone mode (installed)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        setIsPWAInstalled(isStandalone);
+        
+        // Listen for beforeinstallprompt event
+        const handleBeforeInstallPrompt = (e: Event) => {
+          e.preventDefault();
+          setDeferredPrompt(e);
+        };
+
+        // Listen for appinstalled event
+        const handleAppInstalled = () => {
+          setIsPWAInstalled(true);
+          setDeferredPrompt(null);
+          toast({
+            title: "App installed successfully!",
+            description: "Gravitas has been installed on your device",
+          });
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.addEventListener('appinstalled', handleAppInstalled);
+
+        return () => {
+          window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+          window.removeEventListener('appinstalled', handleAppInstalled);
+        };
+      }
+    };
+
+    checkPWAInstallation();
+  }, [toast]);
+
+  const handleInstallPWA = async () => {
+    if (!deferredPrompt) {
+      toast({
+        title: "Installation not available",
+        description: "The install prompt is not available. Try refreshing the page or check if the app is already installed.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsInstalling(true);
+    try {
+      // Show the install prompt
+      deferredPrompt.prompt();
+      
+      // Wait for the user to respond to the prompt
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      if (outcome === 'accepted') {
+        toast({
+          title: "Installation started",
+          description: "Gravitas is being installed on your device",
+        });
+      } else {
+        toast({
+          title: "Installation cancelled",
+          description: "You can install the app later from your browser menu",
+        });
+      }
+      
+      // Clear the deferred prompt
+      setDeferredPrompt(null);
+    } catch (error) {
+      toast({
+        title: "Installation failed",
+        description: "Failed to install the app. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsInstalling(false);
+    }
+  };
 
   const fetchUserProfile = async () => {
     try {
@@ -482,6 +570,72 @@ export default function SettingsPage() {
                   Choose your preferred theme or sync with your system
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* PWA Installation Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5" />
+                Install App
+              </CardTitle>
+              <CardDescription>
+                Install Gravitas as a native app on your device
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isPWAInstalled ? (
+                <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                    <Download className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-green-900 dark:text-green-100">App Installed</p>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      Gravitas is installed on your device
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                      <Smartphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-blue-900 dark:text-blue-100">Install Gravitas</p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        Get a native app experience with offline support, push notifications, and quick access from your home screen.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleInstallPWA}
+                    disabled={!deferredPrompt || isInstalling}
+                    className="w-full"
+                  >
+                    {isInstalling ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Installing...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-4 w-4" />
+                        Install as App
+                      </>
+                    )}
+                  </Button>
+                  
+                  {!deferredPrompt && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Install prompt not available. Try refreshing the page or check if the app is already installed.
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
