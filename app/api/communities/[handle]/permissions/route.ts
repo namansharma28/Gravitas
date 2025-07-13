@@ -13,10 +13,15 @@ export async function GET(
     const client = await clientPromise;
     const db = client.db('gravitas');
 
+    console.log(`[PERMISSIONS] Looking for community with handle: ${params.handle}`);
+    
     const community = await db.collection('communities').findOne({ handle: params.handle });
     if (!community) {
+      console.log(`[PERMISSIONS] Community not found for handle: ${params.handle}`);
       return NextResponse.json({ error: 'Community not found' }, { status: 404 });
     }
+
+    console.log(`[PERMISSIONS] Found community: ${community.name} (${community._id})`);
 
     // If community is pending, only show to admins or the creator
     if (community.status === 'pending') {

@@ -70,10 +70,24 @@ export default function Home() {
   const [trendingCommunities, setTrendingCommunities] = useState<TrendingCommunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [followingStates, setFollowingStates] = useState<Record<string, boolean>>({});
+  
+  // Lazy loading states
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [visibleItems, setVisibleItems] = useState<FeedItem[]>([]);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     fetchHomeData();
   }, [session]);
+
+  // Update visible items when feed items change
+  useEffect(() => {
+    const endIndex = page * itemsPerPage;
+    setVisibleItems(feedItems.slice(0, endIndex));
+    setHasMore(endIndex < feedItems.length);
+  }, [feedItems, page]);
 
   const fetchHomeData = async () => {
     try {
@@ -111,6 +125,41 @@ export default function Home() {
     }
   };
 
+  const loadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    
+    setIsLoadingMore(true);
+    
+    // Simulate loading delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    setPage(prev => prev + 1);
+    setIsLoadingMore(false);
+  };
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const sentinel = document.getElementById('feed-sentinel');
+    if (sentinel) {
+      observer.observe(sentinel);
+    }
+
+    return () => {
+      if (sentinel) {
+        observer.unobserve(sentinel);
+      }
+    };
+  }, [hasMore, isLoadingMore]);
+
   const handleFollow = async (communityId: string, communityHandle: string) => {
     if (!session) {
       toast({
@@ -147,6 +196,14 @@ export default function Home() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+      title: "Link copied",
+      description: "Feed link copied to clipboard",
+    });
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -212,165 +269,522 @@ export default function Home() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <div className="lg:col-span-8">
           {/* Feed Section */}
-          <Card className="overflow-hidden shadow-lg">
-            <CardHeader className="bg-muted/50 border-b">
-              <CardTitle className="text-xl md:text-2xl font-bold">Your Feed</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {!session ? (
-                <div className="text-center py-16 px-4 md:px-8">
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <Users className="h-16 w-16 md:h-20 md:w-20 text-blue-500 dark:text-blue-400 mx-auto mb-6" />
-                    <h3 className="text-xl md:text-2xl font-bold mb-4">Join the Community</h3>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                      Sign in to see personalized updates from communities you follow and events you&apos;re interested in
-                    </p>
-                    <Button size="lg" asChild>
-                      <Link href="/auth/signin">Sign In to Continue</Link>
-                    </Button>
-                  </motion.div>
-                </div>
-              ) : feedItems.length === 0 ? (
-                <div className="text-center py-16 px-4 md:px-8">
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <CalendarDays className="h-16 w-16 md:h-20 md:w-20 text-purple-500 dark:text-purple-400 mx-auto mb-6" />
-                    <h3 className="text-xl md:text-2xl font-bold mb-4">Your Feed Awaits</h3>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                      Follow some communities to see their latest updates and events here
-                    </p>
-                    <Button size="lg" asChild>
-                      <Link href="/explore">Discover Communities</Link>
-                    </Button>
-                  </motion.div>
-                </div>
-              ) : (
-                <div className="p-4 md:p-6 space-y-6 md:space-y-8">
-                  <AnimatePresence>
-                    {feedItems.map((item, index) => (
-                      <motion.div
-                        key={item._id}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -30 }}
-                        transition={{ delay: index * 0.1 }}
-                        onClick={() => handleCardClick(item)}
-                        className="cursor-pointer"
-                      >
-                        <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 shadow-md">
-                          {item.type === "event" && item.image && (
-                            <div 
-                              className="relative h-40 md:h-48 w-full bg-gradient-to-r from-[#91D6FF] to-purple-600"
-                              style={{
-                                backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${item.image})`,
-                                backgroundSize: "cover",
-                                backgroundPosition: "center",
-                              }}
-                            >
-                              <div className="absolute inset-0 flex items-end p-4 md:p-6 text-white">
-                                <div className="space-y-2">
-                                  <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30">
-                                    🎉 Event
-                                  </Badge>
-                                  <h3 className="text-xl md:text-2xl font-bold leading-tight">{item.title}</h3>
-                                  {item.eventDate && (
-                                    <p className="flex items-center gap-2 text-white/90">
-                                      <CalendarDays size={16} /> {item.eventDate}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="absolute top-4 right-4">
-                                <Badge className="bg-green-500/90 text-white">
-                                  Upcoming
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl md:text-2xl font-bold">Your Feed</h2>
+            </div>
+            
+            {!session ? (
+              <div className="text-center py-16 px-4 md:px-8">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Users className="h-16 w-16 md:h-20 md:w-20 text-blue-500 dark:text-blue-400 mx-auto mb-6" />
+                  <h3 className="text-xl md:text-2xl font-bold mb-4">Join the Community</h3>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                    Sign in to see personalized updates from communities you follow and events you&apos;re interested in
+                  </p>
+                  <Button size="lg" asChild>
+                    <Link href="/auth/signin">Sign In to Continue</Link>
+                  </Button>
+                </motion.div>
+              </div>
+            ) : feedItems.length === 0 ? (
+              <div className="text-center py-16 px-4 md:px-8">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <CalendarDays className="h-16 w-16 md:h-20 md:w-20 text-purple-500 dark:text-purple-400 mx-auto mb-6" />
+                  <h3 className="text-xl md:text-2xl font-bold mb-4">Your Feed Awaits</h3>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                    Follow some communities to see their latest updates and events here
+                  </p>
+                  <Button size="lg" asChild>
+                    <Link href="/explore">Discover Communities</Link>
+                  </Button>
+                </motion.div>
+              </div>
+            ) : (
+              <div className="space-y-6 md:space-y-8">
+                <AnimatePresence>
+                  {visibleItems.map((item, index) => (
+                    <motion.div
+                      key={item._id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -30 }}
+                      transition={{ delay: index * 0.1 }}
+                      onClick={() => handleCardClick(item)}
+                      className="cursor-pointer"
+                    >
+                      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 shadow-md">
+                        {item.type === "event" && item.image && (
+                          <div 
+                            className="relative h-40 md:h-48 w-full bg-gradient-to-r from-[#91D6FF] to-purple-600"
+                            style={{
+                              backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${item.image})`,
+                              backgroundSize: "cover",
+                              backgroundPosition: "center",
+                            }}
+                          >
+                            <div className="absolute inset-0 flex items-end p-4 md:p-6 text-white">
+                              <div className="space-y-2">
+                                <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30">
+                                  🎉 Event
                                 </Badge>
+                                <h3 className="text-xl md:text-2xl font-bold leading-tight">{item.title}</h3>
+                                {item.eventDate && (
+                                  <p className="flex items-center gap-2 text-white/90">
+                                    <CalendarDays size={16} /> {item.eventDate}
+                                  </p>
+                                )}
                               </div>
                             </div>
+                            <div className="absolute top-4 right-4">
+                              <Badge className="bg-green-500/90 text-white">
+                                Upcoming
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+
+                        <CardContent className={`p-4 md:p-6 ${item.type === "event" && item.image ? "pt-4" : ""}`}>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10 ring-2 ring-primary/10">
+                                <AvatarImage src={item.community.avatar} />
+                                <AvatarFallback className="bg-gradient-to-br from-[#91D6FF] to-purple-500 text-white">
+                                  {item.community.name.substring(0, 2)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <Link 
+                                  href={`/communities/${item.community.handle}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-semibold hover:text-primary transition-colors"
+                                >
+                                  {item.community.name}
+                                </Link>
+                                <p className="text-sm text-muted-foreground">@{item.community.handle}</p>
+                              </div>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {formatTimeAgo(item.createdAt)}
+                            </div>
+                          </div>
+
+                          {item.type === "update" && (
+                            <h4 className="text-xl font-bold mb-3">{item.title}</h4>
                           )}
 
-                          <CardContent className={`p-4 md:p-6 ${item.type === "event" && item.image ? "pt-4" : ""}`}>
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10 ring-2 ring-primary/10">
-                                  <AvatarImage src={item.community.avatar} />
-                                  <AvatarFallback className="bg-gradient-to-br from-[#91D6FF] to-purple-500 text-white">
-                                    {item.community.name.substring(0, 2)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <Link 
-                                    href={`/communities/${item.community.handle}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="font-semibold hover:text-primary transition-colors"
-                                  >
-                                    {item.community.name}
-                                  </Link>
-                                  <p className="text-sm text-muted-foreground">@{item.community.handle}</p>
-                                </div>
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {formatTimeAgo(item.createdAt)}
-                              </div>
+                          <div className="prose prose-sm max-w-none dark:prose-invert mb-4">
+                            <div data-color-mode={theme === "dark" ? "dark" : "light"}>
+                              <Markdown source={item.content.length > 200 ? item.content.substring(0, 200) + "..." : item.content} />
                             </div>
+                          </div>
 
-                            {item.type === "update" && (
-                              <h4 className="text-xl font-bold mb-3">{item.title}</h4>
-                            )}
-
-                            <div className="prose prose-sm max-w-none dark:prose-invert mb-4">
-                              <div data-color-mode={theme === "dark" ? "dark" : "light"}>
-                                <Markdown source={item.content.length > 200 ? item.content.substring(0, 200) + "..." : item.content} />
+                          {item.eventId && item.type === "update" && (
+                            <Link 
+                              href={`/events/${item.eventId}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="block"
+                            >
+                              <div className="mt-4 p-4 rounded-lg bg-muted border hover:border-primary/30 transition-colors">
+                                <p className="text-sm font-medium text-primary mb-1">📅 Related Event</p>
+                                <p className="font-semibold">{item.eventTitle}</p>
                               </div>
-                            </div>
+                            </Link>
+                          )}
 
-                            {item.eventId && item.type === "update" && (
-                              <Link 
-                                href={`/events/${item.eventId}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="block"
+                          {/* Interaction Bar */}
+                          <div className="flex items-center justify-between pt-4 border-t mt-4 border-border">
+                            <div className="flex items-center gap-6">
+                              <button 
+                                className="flex items-center gap-2 text-muted-foreground hover:text-green-500 dark:hover:text-green-400 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShare();
+                                }}
                               >
-                                <div className="mt-4 p-4 rounded-lg bg-muted border hover:border-primary/30 transition-colors">
-                                  <p className="text-sm font-medium text-primary mb-1">📅 Related Event</p>
-                                  <p className="font-semibold">{item.eventTitle}</p>
+                                <Share2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Mobile: Insert horizontal scroll sections after 2nd and 4th feed items */}
+                      {index === 1 && (
+                        <div className="md:hidden mt-6">
+                          {/* Upcoming Events Horizontal Scroll */}
+                          <div className="mb-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-bold flex items-center gap-2">
+                                <CalendarDays className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                Upcoming Events
+                              </h3>
+                              <Link href="/calendar">
+                                <Button variant="ghost" size="sm" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300">
+                                  View All
+                                </Button>
+                              </Link>
+                            </div>
+                            {upcomingEvents.length > 0 ? (
+                              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                                {upcomingEvents.slice(0, 5).map((event, eventIndex) => (
+                                  <motion.div
+                                    key={event._id}
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.1 + eventIndex * 0.1 }}
+                                    className="flex-shrink-0 w-72"
+                                  >
+                                    <Link 
+                                      href={`/events/${event._id}`}
+                                      className="block rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30 bg-card"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div 
+                                          className="h-12 w-12 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
+                                          style={{
+                                            backgroundImage: event.image 
+                                              ? `url(${event.image})`
+                                              : undefined,
+                                            backgroundSize: "cover",
+                                            backgroundPosition: "center",
+                                          }}
+                                        >
+                                          {!event.image && (
+                                            <CalendarDays className="h-6 w-6 text-white" />
+                                          )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-semibold truncate text-sm">{event.title}</p>
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <Avatar className="h-3 w-3">
+                                              <AvatarImage src={event.community.avatar} />
+                                              <AvatarFallback>{event.community.name.substring(0, 2)}</AvatarFallback>
+                                            </Avatar>
+                                            <p className="text-xs text-muted-foreground truncate">{event.community.name}</p>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                                            <div className="flex items-center gap-1">
+                                              <CalendarDays className="h-3 w-3" />
+                                              <span>{event.date}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {event.userRegistered && (
+                                          <Badge className="bg-green-500 dark:bg-green-600 text-white text-xs">
+                                            ✓
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </Link>
+                                  </motion.div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-8 px-4">
+                                <CalendarDays className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                                <p className="text-sm text-muted-foreground">No upcoming events</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Show trending communities after 3rd item or at the end if fewer items */}
+                      {(index === 3 || (index === visibleItems.length - 1 && index < 3)) && (
+                        <div className="md:hidden mt-6">
+                          {/* Trending Communities Horizontal Scroll */}
+                          <div className="mb-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-bold flex items-center gap-2">
+                                <Compass className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                Trending Communities
+                              </h3>
+                              <Link href="/explore">
+                                <Button variant="ghost" size="sm" className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300">
+                                  Explore
+                                </Button>
+                              </Link>
+                            </div>
+                            {trendingCommunities.length > 0 ? (
+                              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                                {trendingCommunities.slice(0, 5).map((community, commIndex) => (
+                                  <motion.div
+                                    key={community._id}
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.1 + commIndex * 0.1 }}
+                                    className="flex-shrink-0 w-64"
+                                  >
+                                    <div className="flex items-center gap-3 rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30 bg-card">
+                                      <Avatar className="ring-2 ring-primary/10">
+                                        <AvatarImage src={community.avatar} />
+                                        <AvatarFallback className="bg-gradient-to-br from-[#91D6FF] to-pink-500 text-white">
+                                          {community.name.substring(0, 2)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <Link 
+                                            href={`/communities/${community.handle}`} 
+                                            className="font-semibold hover:text-primary transition-colors truncate text-sm"
+                                          >
+                                            {community.name}
+                                          </Link>
+                                          {community.isVerified && (
+                                            <Badge variant="outline" className="h-3 border-blue-300 dark:border-blue-700 px-1 text-[8px] text-blue-500 dark:text-blue-400">
+                                              ✓
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">@{community.handle}</p>
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                          <Users size={10} />
+                                          <span>{community.membersCount} members</span>
+                                        </div>
+                                      </div>
+                                      {session && community.userRelation !== 'member' && community.userRelation !== 'admin' && (
+                                        <Button
+                                          size="sm"
+                                          variant={followingStates[community._id] ? "default" : "outline"}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            handleFollow(community._id, community.handle);
+                                          }}
+                                          className="h-6 text-xs px-2"
+                                        >
+                                          {followingStates[community._id] ? "Following" : "Follow"}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </motion.div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-8 px-4">
+                                <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                                <p className="text-sm text-muted-foreground">No trending communities</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                
+                {/* Loading indicator */}
+                {isLoadingMore && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex justify-center py-8"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading more...</span>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Intersection Observer Sentinel */}
+                {hasMore && (
+                  <div 
+                    id="feed-sentinel" 
+                    className="h-4 w-full"
+                  />
+                )}
+
+                {/* End of feed indicator */}
+                {!hasMore && visibleItems.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-8"
+                  >
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                      <div className="h-px w-8 bg-border" />
+                      <span className="text-sm">You&apos;ve reached the end</span>
+                      <div className="h-px w-8 bg-border" />
+                    </div>
+                  </motion.div>
+                )}
+                
+                {/* Mobile: Show sections even if no feed items or few items */}
+                {feedItems.length === 0 && (
+                  <div className="md:hidden space-y-6">
+                    {/* Upcoming Events Horizontal Scroll */}
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold flex items-center gap-2">
+                          <CalendarDays className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          Upcoming Events
+                        </h3>
+                        <Link href="/calendar">
+                          <Button variant="ghost" size="sm" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300">
+                            View All
+                          </Button>
+                        </Link>
+                      </div>
+                      {upcomingEvents.length > 0 ? (
+                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                          {upcomingEvents.slice(0, 5).map((event, eventIndex) => (
+                            <motion.div
+                              key={event._id}
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.1 + eventIndex * 0.1 }}
+                              className="flex-shrink-0 w-72"
+                            >
+                              <Link 
+                                href={`/events/${event._id}`}
+                                className="block rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30 bg-card"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div 
+                                    className="h-12 w-12 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
+                                    style={{
+                                      backgroundImage: event.image 
+                                        ? `url(${event.image})`
+                                        : undefined,
+                                      backgroundSize: "cover",
+                                      backgroundPosition: "center",
+                                    }}
+                                  >
+                                    {!event.image && (
+                                      <CalendarDays className="h-6 w-6 text-white" />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold truncate text-sm">{event.title}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Avatar className="h-3 w-3">
+                                        <AvatarImage src={event.community.avatar} />
+                                        <AvatarFallback>{event.community.name.substring(0, 2)}</AvatarFallback>
+                                      </Avatar>
+                                      <p className="text-xs text-muted-foreground truncate">{event.community.name}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                                      <div className="flex items-center gap-1">
+                                        <CalendarDays className="h-3 w-3" />
+                                        <span>{event.date}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {event.userRegistered && (
+                                    <Badge className="bg-green-500 dark:bg-green-600 text-white text-xs">
+                                      ✓
+                                    </Badge>
+                                  )}
                                 </div>
                               </Link>
-                            )}
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 px-4">
+                          <CalendarDays className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">No upcoming events</p>
+                        </div>
+                      )}
+                    </div>
 
-                            {/* Interaction Bar */}
-                            <div className="flex items-center justify-between pt-4 border-t mt-4 border-border">
-                              <div className="flex items-center gap-6">
-                                <button 
-                                  className="flex items-center gap-2 text-muted-foreground hover:text-green-500 dark:hover:text-green-400 transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Share2 className="h-4 w-4" />
-                                </button>
+                    {/* Trending Communities Horizontal Scroll */}
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold flex items-center gap-2">
+                          <Compass className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                          Trending Communities
+                        </h3>
+                        <Link href="/explore">
+                          <Button variant="ghost" size="sm" className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300">
+                            Explore
+                          </Button>
+                        </Link>
+                      </div>
+                      {trendingCommunities.length > 0 ? (
+                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                          {trendingCommunities.slice(0, 5).map((community, commIndex) => (
+                            <motion.div
+                              key={community._id}
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.1 + commIndex * 0.1 }}
+                              className="flex-shrink-0 w-64"
+                            >
+                              <div className="flex items-center gap-3 rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30 bg-card">
+                                <Avatar className="ring-2 ring-primary/10">
+                                  <AvatarImage src={community.avatar} />
+                                  <AvatarFallback className="bg-gradient-to-br from-[#91D6FF] to-pink-500 text-white">
+                                    {community.name.substring(0, 2)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <Link 
+                                      href={`/communities/${community.handle}`} 
+                                      className="font-semibold hover:text-primary transition-colors truncate text-sm"
+                                    >
+                                      {community.name}
+                                    </Link>
+                                    {community.isVerified && (
+                                      <Badge variant="outline" className="h-3 border-blue-300 dark:border-blue-700 px-1 text-[8px] text-blue-500 dark:text-blue-400">
+                                        ✓
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">@{community.handle}</p>
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                    <Users size={10} />
+                                    <span>{community.membersCount} members</span>
+                                  </div>
+                                </div>
+                                {session && community.userRelation !== 'member' && community.userRelation !== 'admin' && (
+                                  <Button
+                                    size="sm"
+                                    variant={followingStates[community._id] ? "default" : "outline"}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handleFollow(community._id, community.handle);
+                                    }}
+                                    className="h-6 text-xs px-2"
+                                  >
+                                    {followingStates[community._id] ? "Following" : "Follow"}
+                                  </Button>
+                                )}
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 px-4">
+                          <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">No trending communities</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-6 md:space-y-8 lg:col-span-4">
-          {/* Upcoming Events */}
+          {/* Upcoming Events - Hidden on mobile */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
+            className="hidden md:block"
           >
             <Card className="overflow-hidden shadow-lg">
               <CardHeader className="bg-muted/50 border-b">
@@ -458,11 +872,12 @@ export default function Home() {
             </Card>
           </motion.div>
 
-          {/* Trending Communities */}
+          {/* Trending Communities - Hidden on mobile */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
+            className="hidden md:block"
           >
             <Card className="overflow-hidden shadow-lg">
               <CardHeader className="bg-muted/50 border-b">
@@ -550,23 +965,7 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <Card className="overflow-hidden shadow-lg">
-              <CardContent className="p-4 md:p-6 text-center">
-                <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-[#91D6FF] to-purple-500 dark:from-[#91D6FF] dark:to-purple-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="h-7 w-7 md:h-8 md:w-8 text-primary-foreground" />
-                </div>
-                <h3 className="font-bold text-lg mb-2">Start Your Community</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Create a space for people who share your interests and passions
-                </p>
-                <Button asChild className="w-full bg-gradient-to-r from-[#91D6FF] to-purple-500 dark:from-[#91D6FF] dark:to-purple-400 hover:from-[#91D6FF]/90 hover:to-purple-500/90 dark:hover:from-[#91D6FF]/90 dark:hover:to-purple-400/90 text-primary-foreground">
-                  <Link href="/communities/create">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Community
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+           
           </motion.div>
         </div>
       </div>

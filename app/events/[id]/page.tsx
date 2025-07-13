@@ -172,6 +172,14 @@ export default function EventPage({ params }: { params: { id: string } }) {
     }
   };
 
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+      title: "Link copied",
+      description: "Event link copied to clipboard",
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center">
@@ -390,7 +398,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
                     onRegistrationChange={handleRegistrationChange}
                   />
                 )}
-                <Button variant="outline" className="w-full" size="lg">
+                <Button variant="outline" className="w-full" size="lg" onClick={handleShare}>
                   <Share2 className="mr-2 h-4 w-4" /> Share
                 </Button>
               </div>

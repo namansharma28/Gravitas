@@ -208,9 +208,15 @@ export default function UpdatePage({ params }: { params: { id: string } }) {
                   <AvatarFallback>{update.community.name?.charAt(0) || 'C'}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <Link href={`/communities/${update.community.handle}`} className="text-lg font-semibold hover:underline">
-                    {update.community.name}
-                  </Link>
+                  {update.community.handle && update.community.handle !== 'unknown' ? (
+                    <Link href={`/communities/${update.community.handle}`} className="text-lg font-semibold hover:underline">
+                      {update.community.name}
+                    </Link>
+                  ) : (
+                    <span className="text-lg font-semibold text-muted-foreground">
+                      {update.community.name}
+                    </span>
+                  )}
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>{timeAgo}</span>
                     <Badge variant={update.visibility !== 'everyone' ? 'secondary' : 'outline'}>

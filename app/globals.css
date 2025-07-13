@@ -45,6 +45,7 @@
   --border: 0 0% 14.9%;
   --input: 0 0% 14.9%;
   --ring: 199 100% 78%;
+  --page-background: #0a0a0a;
 }
 
 @layer base {
@@ -53,6 +54,20 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Light mode background improvements */
+  :root {
+    --page-background: #f8fafc;
+  }
+  
+  body {
+    background-color: var(--page-background) !important;
+  }
+  
+  /* Main content area background */
+  main {
+    background-color: var(--page-background) !important;
   }
   
   /* Improve mobile responsiveness */
@@ -139,4 +154,14 @@ button,
 a, 
 [role="button"] {
   touch-action: manipulation;
+}
+
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
 }

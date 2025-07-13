@@ -122,9 +122,11 @@ export default function CommunityPage({ params }: { params: { handle: string } }
   const [updates, setUpdates] = useState<Update[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("feed");
+  const [error, setError] = useState<string | null>(null);
 
   const fetchCommunityData = async () => {
     try {
+      setError(null);
       const [permissionsRes, membersRes, eventsRes, updatesRes] = await Promise.all([
         fetch(`/api/communities/${params.handle}/permissions`),
         fetch(`/api/communities/${params.handle}/members`),
@@ -132,15 +134,31 @@ export default function CommunityPage({ params }: { params: { handle: string } }
         fetch(`/api/communities/${params.handle}/updates`)
       ]);
 
-      if (!permissionsRes.ok || !membersRes.ok || !eventsRes.ok || !updatesRes.ok) {
-        throw new Error('Failed to fetch community data');
+      // Check each response individually and provide specific error messages
+      if (!permissionsRes.ok) {
+        if (permissionsRes.status === 404) {
+          throw new Error('Community not found');
+        }
+        throw new Error(`Failed to fetch community permissions: ${permissionsRes.status}`);
+      }
+
+      if (!membersRes.ok) {
+        console.warn(`Failed to fetch members: ${membersRes.status}`);
+      }
+
+      if (!eventsRes.ok) {
+        console.warn(`Failed to fetch events: ${eventsRes.status}`);
+      }
+
+      if (!updatesRes.ok) {
+        console.warn(`Failed to fetch updates: ${updatesRes.status}`);
       }
 
       const [permissionsData, membersData, eventsData, updatesData] = await Promise.all([
         permissionsRes.json(),
-        membersRes.json(),
-        eventsRes.json(),
-        updatesRes.json()
+        membersRes.ok ? membersRes.json() : [],
+        eventsRes.ok ? eventsRes.json() : [],
+        updatesRes.ok ? updatesRes.json() : []
       ]);
 
       // Set community data first
@@ -176,9 +194,11 @@ export default function CommunityPage({ params }: { params: { handle: string } }
       setUpdates(transformedUpdates);
     } catch (error) {
       console.error('Error fetching community data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load community data';
+      setError(errorMessage);
       toast({
         title: "Error",
-        description: "Failed to load community data",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -199,14 +219,34 @@ export default function CommunityPage({ params }: { params: { handle: string } }
     );
   }
 
+  if (error) {
+    return (
+      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Community Not Found</h1>
+          <p className="text-muted-foreground mb-6">
+            {error === 'Community not found' 
+              ? `The community "${params.handle}" could not be found.` 
+              : error}
+          </p>
+          <Button asChild>
+            <Link href="/">Go Home</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!community || !userPermissions) {
     return (
       <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
-        <h1 className="text-3xl font-bold">Community Not Found</h1>
-        <p className="mb-6 text-muted-foreground">The community you&apos;re looking for doesn&apos;t exist or has been rejected.</p>
-        <Button asChild>
-          <Link href="/explore">Explore Communities</Link>
-        </Button>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
+          <p className="text-muted-foreground mb-6">Unable to load community data.</p>
+          <Button asChild>
+            <Link href="/">Go Home</Link>
+          </Button>
+        </div>
       </div>
     );
   }

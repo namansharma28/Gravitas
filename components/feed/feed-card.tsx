@@ -6,13 +6,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FeedItem } from "@/types/feed";
+import { useToast } from "@/hooks/use-toast";
 
 interface FeedCardProps {
   item: FeedItem;
 }
 
 export default function FeedCard({ item }: FeedCardProps) {
+  const { toast } = useToast();
   const timeAgo = formatDistanceToNow(new Date(item.date), { addSuffix: true });
+
+  const handleShare = () => {
+    // Create the appropriate URL based on item type
+    const shareUrl = item.type === 'event' && item.eventId 
+      ? `${window.location.origin}/events/${item.eventId}`
+      : `${window.location.origin}/updates/${item.id}`;
+    
+    navigator.clipboard.writeText(shareUrl);
+    toast({
+      title: "Link copied",
+      description: `${item.type === 'event' ? 'Event' : 'Update'} link copied to clipboard`,
+    });
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -49,10 +64,14 @@ export default function FeedCard({ item }: FeedCardProps) {
               <AvatarFallback>{item.community.name.substring(0, 2)}</AvatarFallback>
             </Avatar>
             <div>
-              <Link href={`/communities/${item.community.handle}`}>
-                <p className="text-sm font-medium hover:underline">{item.community.name}</p>
-              </Link>
-              <p className="text-xs text-muted-foreground">@{item.community.handle}</p>
+              {item.community.handle && item.community.handle !== 'unknown' ? (
+                <Link href={`/communities/${item.community.handle}`}>
+                  <p className="text-sm font-medium hover:underline">{item.community.name}</p>
+                </Link>
+              ) : (
+                <p className="text-sm font-medium text-muted-foreground">{item.community.name}</p>
+              )}
+              <p className="text-xs text-muted-foreground">@{item.community.handle || 'unknown'}</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">{timeAgo}</p>
@@ -84,7 +103,12 @@ export default function FeedCard({ item }: FeedCardProps) {
 
       <CardFooter className="border-t bg-muted/20 p-2 px-4">
         <div className="flex w-full items-center justify-end">
-          <Button variant="ghost" size="sm" className="h-8 text-muted-foreground">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 text-muted-foreground"
+            onClick={handleShare}
+          >
             <Share2 size={16} />
           </Button>
         </div>

@@ -78,6 +78,14 @@ export default function CommunityHeader({ community, userPermissions }: Communit
     }
   };
 
+  const handleShare = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/communities/${community.handle}`);
+    toast({
+      title: "Link copied",
+      description: "Community link copied to clipboard",
+    });
+  };
+
   const getActionButtons = () => {
     // If community is pending, show pending status
     if (userPermissions.isPending) {
@@ -223,7 +231,7 @@ export default function CommunityHeader({ community, userPermissions }: Communit
 
         <div className="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
           {getActionButtons()}
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" onClick={handleShare}>
             <Share2 className="h-4 w-4" />
           </Button>
         </div>
