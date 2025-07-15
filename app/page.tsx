@@ -318,10 +318,11 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -30 }}
                       transition={{ delay: index * 0.1 }}
-                      onClick={() => handleCardClick(item)}
-                      className="cursor-pointer"
                     >
-                      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 shadow-md">
+                      <Card
+                        className="overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 shadow-md cursor-pointer"
+                        onClick={() => handleCardClick(item)}
+                      >
                         {item.type === "event" && item.image && (
                           <div 
                             className="relative h-40 md:h-48 w-full bg-gradient-to-r from-[#91D6FF] to-purple-600"
