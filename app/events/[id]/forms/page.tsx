@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, FileText, Users, Trash2, Pencil, Share2, Mail, QrCode, CheckSquare, Square, Download } from "lucide-react";
+import { Plus, FileText, Users, Trash2, Pencil, Share2, Mail, QrCode, CheckSquare, Square, Download, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ParticipantShortlistDialog from "@/components/events/participant-shortlist-dialog";
 import TicketEmailDialog from "@/components/events/ticket-email-dialog";
+import ImportResponsesDialog from "@/components/events/import-responses-dialog";
 import Link from "next/link";
 
 interface Form {
@@ -318,6 +319,14 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                               <Download className="mr-2 h-4 w-4" />
                               {exportingFormId === form.id ? "Exporting..." : "Export as Excel"}
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                document.getElementById(`import-dialog-trigger-${form.id}`)?.click();
+                              }}
+                            >
+                              <FileSpreadsheet className="mr-2 h-4 w-4" />
+                              Import from Excel
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
 
@@ -379,12 +388,25 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={exportingFormId === form.id || form.responses.length === 0}
                         onClick={() => exportFormResponses(form.id, form.title)}
-                        disabled={exportingFormId === form.id}
                       >
                         <Download className="mr-2 h-4 w-4" />
                         {exportingFormId === form.id ? "Exporting..." : "Export Excel"}
                       </Button>
+
+                      <ImportResponsesDialog
+                        eventId={params.id}
+                        formId={form.id}
+                        formFields={form.fields}
+                        onSuccess={fetchForms}
+                        trigger={
+                          <Button variant="outline" size="sm">
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            Import Excel
+                          </Button>
+                        }
+                      />
 
                       <Button
                         variant="outline"
@@ -430,6 +452,20 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                       )}
                     </div>
                   )}
+                </div>
+
+                <div id={`import-dialog-trigger-${form.id}`} className="hidden">
+                  <ImportResponsesDialog
+                    eventId={params.id}
+                    formId={form.id}
+                    formFields={form.fields}
+                    onSuccess={fetchForms}
+                    trigger={
+                      <Button variant="outline" size="sm">
+                        Import Excel
+                      </Button>
+                    }
+                  />
                 </div>
 
                 {form.responses.length === 0 ? (

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, FileText, Users, Trash2, Pencil, Share2, Mail, QrCode, CheckSquare, Square, Download, ArrowLeft } from "lucide-react";
+import { Plus, FileText, Users, Trash2, Pencil, Share2, Mail, QrCode, CheckSquare, Square, Download, ArrowLeft, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ParticipantShortlistDialog from "@/components/events/participant-shortlist-dialog";
 import TicketEmailDialog from "@/components/events/ticket-email-dialog";
+import ImportResponsesDialog from "@/components/events/import-responses-dialog";
 import Link from "next/link";
 
 interface Form {
@@ -324,6 +325,19 @@ export default function FormPage({ params }: { params: { id: string; formId: str
                 <Download className="mr-2 h-4 w-4" />
                 {exportingFormId === params.formId ? "Exporting..." : "Export as Excel"}
               </DropdownMenuItem>
+              
+              <ImportResponsesDialog
+                eventId={params.id}
+                formId={params.formId}
+                formFields={form.fields}
+                onSuccess={fetchForm}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Import Excel
+                  </Button>
+                }
+              />
             </DropdownMenuContent>
           </DropdownMenu>
           <AlertDialog>
