@@ -14,8 +14,18 @@ export async function middleware(request: NextRequest) {
     return null;
   }
 
+  // Get the pathname of the request (e.g. /, /protected, /landing)
+  const path = request.nextUrl.pathname;
+
+  // If it's the landing page, don't apply the default layout
+  if (path.startsWith('/landing')) {
+    return NextResponse.next();
+  }
+
+  // Continue with default layout for other routes
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/auth/:path*', '/profile/:path*', '/communities/:path*', '/events/:path*']
+  matcher: '/:path*',
 };
