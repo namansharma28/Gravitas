@@ -1,5 +1,6 @@
 "use client";
 
+import { metadata } from './metadata';
 import { ModeToggle } from '@/components/layout/mode-toggle';
 import LandingNavbar from '@/components/layout/landing-navbar';
 
