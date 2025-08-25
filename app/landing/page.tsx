@@ -9,46 +9,6 @@ import { Users, CalendarDays, Compass, Sparkles, CheckCircle, ArrowRight } from 
 export default function LandingPage() {
   return (
     <>
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        {/* Animated circles - using predefined positions instead of random values */}
-        {[
-          { size: 200, left: "10%", top: "20%", xMove: 30, yMove: 20, duration: 15 },
-          { size: 300, left: "70%", top: "10%", xMove: -40, yMove: 30, duration: 20 },
-          { size: 250, left: "30%", top: "60%", xMove: 50, yMove: -20, duration: 18 },
-          { size: 180, left: "80%", top: "70%", xMove: -30, yMove: -40, duration: 25 },
-          { size: 220, left: "20%", top: "80%", xMove: 40, yMove: -30, duration: 22 },
-          { size: 280, left: "50%", top: "30%", xMove: -50, yMove: 40, duration: 19 },
-          { size: 150, left: "90%", top: "40%", xMove: -20, yMove: 50, duration: 17 },
-          { size: 320, left: "40%", top: "90%", xMove: 60, yMove: -50, duration: 23 },
-          { size: 270, left: "60%", top: "50%", xMove: -60, yMove: -20, duration: 21 },
-          { size: 190, left: "5%", top: "45%", xMove: 25, yMove: 35, duration: 16 }
-        ].map((circle, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full "
-            style={{
-              width: circle.size,
-              height: circle.size,
-              left: circle.left,
-              top: circle.top,
-            }}
-            animate={{
-              x: [0, circle.xMove],
-              y: [0, circle.yMove],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{
-              duration: circle.duration,
-              repeat: Infinity,
-              repeatType: "reverse",
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-        
-
-      </div>
 
       {/* Hero Section */}
       <section className="min-h-screen flex flex-col justify-center items-center relative">
@@ -56,7 +16,7 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
-          className="w-full max-w-2xl py-16 text-center space-y-8"
+          className="w-full max-w-2xl px-6 py-16 text-center space-y-8 bg-transparent"
         >
           <div className="space-y-4">
             <motion.div
@@ -116,7 +76,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               whileHover={{ y: -5 }}
-              className="flex flex-col items-center backdrop-blur-md bg-white/80 dark:bg-slate-900/80 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-800 w-full md:w-1/3"
+              className="flex flex-col items-center backdrop-blur-md bg-transparent rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-800 w-full md:w-1/3"
             >
               <Users className="h-10 w-10 text-purple-500 dark:text-purple-400 mb-2" />
               <h3 className="font-bold text-lg mb-1">Find Your People</h3>
@@ -130,7 +90,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
               whileHover={{ y: -5 }}
-              className="flex flex-col items-center backdrop-blur-md bg-white/80 dark:bg-slate-900/80 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-800 w-full md:w-1/3"
+              className="flex flex-col items-center backdrop-blur-md bg-transparent rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-800 w-full md:w-1/3"
             >
               <CalendarDays className="h-10 w-10 text-pink-500 dark:text-pink-400 mb-2" />
               <h3 className="font-bold text-lg mb-1">Never Miss an Event</h3>
@@ -144,7 +104,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
               whileHover={{ y: -5 }}
-              className="flex flex-col items-center backdrop-blur-md bg-white/80 dark:bg-slate-900/80 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-800 w-full md:w-1/3"
+              className="flex flex-col items-center backdrop-blur-md bg-transparent rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-800 w-full md:w-1/3"
             >
               <Compass className="h-10 w-10 text-cyan-500 dark:text-cyan-400 mb-2" />
               <h3 className="font-bold text-lg mb-1">Explore & Connect</h3>
@@ -157,7 +117,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm relative overflow-hidden">
+      <section className="py-20 relative overflow-hidden">
         {/* Animated background elements */}
         <div className="absolute inset-0 -z-10">
           <motion.div 
