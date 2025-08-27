@@ -10,9 +10,8 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Allow non-logged-in users to view event details
+    const userId = session?.user?.id;
 
     const client = await clientPromise;
     const db = client.db('gravitas');
@@ -30,8 +29,8 @@ export async function GET(
     }
 
     // Check if user is a member or admin of the community
-    const isMember = community.members.includes(session.user.id);
-    const isAdmin = community.admins.includes(session.user.id);
+    const isMember = userId ? community.members.includes(userId) : false;
+    const isAdmin = userId ? community.admins.includes(userId) : false;
 
     return NextResponse.json({
       id: event._id.toString(),
@@ -54,9 +53,9 @@ export async function GET(
       userPermissions: {
         isMember,
         isAdmin,
-        isCreator: event.creatorId === session.user.id,
-        canEdit: isAdmin || event.creatorId === session.user.id,
-        canDelete: isAdmin || event.creatorId === session.user.id,
+        isCreator: userId ? event.creatorId === userId : false,
+        canEdit: isAdmin || (userId ? event.creatorId === userId : false),
+        canDelete: isAdmin || (userId ? event.creatorId === userId : false),
         canCreateForms: isMember || isAdmin,
         canCreateUpdates: isMember || isAdmin,
       }

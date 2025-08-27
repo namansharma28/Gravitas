@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CalendarDays, Clock, MapPin, ArrowLeft, Upload, X } from "lucide-react";
+import { handleApiResponse } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -101,10 +102,18 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
     const fetchEvent = async () => {
       try {
         const response = await fetch(`/api/events/${params.id}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch event');
-        }
-        const data = await response.json();
+        
+        const data = await handleApiResponse<Event>(response, {
+          router,
+          toast,
+          errorMessage: {
+            title: "Error",
+            description: "Failed to fetch event"
+          },
+          redirectOnAuthError: true
+        });
+        
+        if (!data) return;
         
         if (!data.userPermissions.canEdit) {
           toast({
@@ -117,7 +126,7 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
         }
 
         setEvent(data);
-        setImagePreview(data.image);
+        setImagePreview(data.image || null);
         form.reset({
           title: data.title,
           description: data.description,
@@ -151,13 +160,24 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to upload image');
+      const data = await handleApiResponse<{ url: string }>(response, {
+        router,
+        toast,
+        successMessage: {
+          title: "Success",
+          description: "Image uploaded successfully"
+        },
+        errorMessage: {
+          title: "Error",
+          description: "Failed to upload image"
+        },
+        redirectOnAuthError: true
+      });
+      
+      if (data) {
+        form.setValue('image', data.url);
+        setImagePreview(data.url);
       }
-
-      const data = await response.json();
-      form.setValue('image', data.url);
-      setImagePreview(data.url);
     } catch (error) {
       toast({
         title: "Error",
@@ -202,16 +222,23 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
         body: JSON.stringify(values),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update event');
-      }
-
-      toast({
-        title: "Event Updated",
-        description: "Your event has been updated successfully.",
+      const success = await handleApiResponse(response, {
+        router,
+        toast,
+        successMessage: {
+          title: "Success",
+          description: "Event Updated"
+        },
+        errorMessage: {
+          title: "Error",
+          description: "Failed to update event"
+        },
+        redirectOnAuthError: true
       });
-      router.push(`/events/${params.id}`);
+      
+      if (success) {
+        router.push(`/events/${params.id}`);
+      }
     } catch (error: any) {
       toast({
         title: "Error",

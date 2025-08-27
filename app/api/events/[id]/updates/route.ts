@@ -10,9 +10,8 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Allow non-logged-in users to view updates
+    const userId = session?.user?.id;
 
     const data = await request.json();
     const { 
@@ -47,9 +46,9 @@ export async function POST(
     }
 
     // Check if user can create updates
-    const isAdmin = community.admins.includes(session.user.id);
-    const isMember = community.members.includes(session.user.id);
-    const isCreator = event.creatorId === session.user.id;
+    const isAdmin = community.admins.includes(userId);
+    const isMember = community.members.includes(userId);
+    const isCreator = event.creatorId === userId;
 
     if (!isAdmin && !isMember && !isCreator) {
       return NextResponse.json({ error: 'Not authorized to create updates' }, { status: 403 });
@@ -83,7 +82,7 @@ export async function POST(
       documents: documents || [],
       attachedFormId: attachedFormId || null,
       targetFormId: targetFormId || null, // Store the target form ID for shortlisted visibility
-      createdBy: new ObjectId(session.user.id), // Store as ObjectId for proper lookup
+      createdBy: new ObjectId(userId!), // Store as ObjectId for proper lookup
       createdAt: new Date(),
       updatedAt: new Date(),
       comments: [],
@@ -125,7 +124,7 @@ export async function POST(
       documents,
       attachedFormId,
       targetFormId,
-      createdBy: session.user.id,
+      createdBy: userId,
       createdAt: new Date(),
     });
   } catch (error: any) {

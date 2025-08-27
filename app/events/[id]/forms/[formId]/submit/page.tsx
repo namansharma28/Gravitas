@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { handleApiResponse } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -103,6 +104,16 @@ export default function SubmitFormPage({
   };
 
   const handleFileUpload = async (fieldId: string, file: File, field: any) => {
+    if (!session?.user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to upload files",
+        variant: "destructive",
+      });
+      router.push('/auth/signin');
+      return;
+    }
+
     // Validate file type
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     if (field.fileTypes && !field.fileTypes.includes(fileExtension)) {
@@ -136,25 +147,30 @@ export default function SubmitFormPage({
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to upload file');
-      }
-
-      const data = await response.json();
-      const uploadedFile: UploadedFile = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        url: data.url,
-        size: file.size,
-      };
-
-      setUploadedFiles(prev => ({ ...prev, [fieldId]: uploadedFile }));
-      handleInputChange(fieldId, uploadedFile.url);
-
-      toast({
-        title: "File uploaded",
-        description: `${file.name} has been uploaded successfully`,
+      const responseData = await handleApiResponse<{url: string}>(response, {
+        router,
+        toast,
+        successMessage: {
+          title: "File uploaded",
+          description: `${file.name} has been uploaded successfully`,
+        },
+        errorMessage: {
+          title: "Upload failed",
+          description: "Failed to upload file. Please try again.",
+        }
       });
+
+      if (responseData) {
+        const uploadedFile: UploadedFile = {
+          id: crypto.randomUUID(),
+          name: file.name,
+          url: responseData.url,
+          size: file.size,
+        };
+
+        setUploadedFiles(prev => ({ ...prev, [fieldId]: uploadedFile }));
+        handleInputChange(fieldId, uploadedFile.url);
+      }
     } catch (error) {
       toast({
         title: "Upload failed",
@@ -239,10 +255,11 @@ export default function SubmitFormPage({
   async function onSubmit() {
     if (!session?.user) {
       toast({
-        title: "Error",
+        title: "Authentication required",
         description: "You must be logged in to submit the form",
         variant: "destructive",
       });
+      router.push(`/auth/signin?callbackUrl=${encodeURIComponent(`/events/${params.id}/forms/${params.formId}/submit`)}`);
       return;
     }
 
@@ -266,17 +283,22 @@ export default function SubmitFormPage({
         body: JSON.stringify({ answers }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to submit form");
-      }
-
-      toast({
-        title: "Success",
-        description: "Form submitted successfully",
+      const data = await handleApiResponse(response, {
+        router,
+        toast,
+        successMessage: {
+          title: "Success",
+          description: "Form submitted successfully",
+        },
+        errorMessage: {
+          title: "Error",
+          description: "Failed to submit form",
+        }
       });
 
-      router.push(`/events/${params.id}`);
+      if (data) {
+        router.push(`/events/${params.id}`);
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -361,7 +383,7 @@ export default function SubmitFormPage({
                 
                 {field.type === "select" && (
                   <Select
-                    onValueChange={(value) => handleInputChange(field.id, value)}
+                    onValueChange={(value: string) => handleInputChange(field.id, value)}
                     value={formData[field.id] || ""}
                   >
                     <SelectTrigger>
@@ -386,7 +408,7 @@ export default function SubmitFormPage({
                           <Checkbox
                             id={`${field.id}-${option}`}
                             checked={(formData[field.id] || []).includes(option)}
-                            onCheckedChange={(checked) => {
+                            onCheckedChange={(checked: boolean) => {
                               const currentValues = formData[field.id] || [];
                               if (checked) {
                                 handleInputChange(field.id, [...currentValues, option]);
@@ -404,7 +426,7 @@ export default function SubmitFormPage({
                         <Checkbox
                           id={field.id}
                           checked={formData[field.id] || false}
-                          onCheckedChange={(checked) => handleInputChange(field.id, checked)}
+                          onCheckedChange={(checked: boolean) => handleInputChange(field.id, checked)}
                         />
                         <Label htmlFor={field.id}>
                           {field.options?.[0]?.trim() || field.label}

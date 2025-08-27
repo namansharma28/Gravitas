@@ -92,6 +92,8 @@ export default function EventPage({ params }: { params: { id: string } }) {
   const [rsvpStatus, setRSVPStatus] = useState<RSVPStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Check if user is logged in
+  const isLoggedIn = !!session?.user;
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -99,6 +101,11 @@ export default function EventPage({ params }: { params: { id: string } }) {
         // Fetch event details
         const eventResponse = await fetch(`/api/events/${params.id}`);
         if (!eventResponse.ok) {
+          // Handle 401 Unauthorized by setting event to null instead of throwing an error
+          if (eventResponse.status === 401) {
+            setEvent(null);
+            return;
+          }
           throw new Error('Failed to fetch event');
         }
         const eventData = await eventResponse.json();
@@ -111,7 +118,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
           setUpdates(updatesData);
         }
 
-        // Fetch RSVP status
+        // Fetch RSVP status for all users
         const rsvpResponse = await fetch(`/api/events/${params.id}/rsvp`);
         if (rsvpResponse.ok) {
           const rsvpData = await rsvpResponse.json();
@@ -129,9 +136,19 @@ export default function EventPage({ params }: { params: { id: string } }) {
     };
 
     fetchEventData();
-  }, [params.id, toast]);
+  }, [params.id, toast, isLoggedIn]);
 
   const handleDeleteEvent = async () => {
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      toast({
+        title: "Login Required",
+        description: "You need to be logged in to delete an event.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsDeleting(true);
     try {
       const response = await fetch(`/api/events/${params.id}`, {
@@ -200,7 +217,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const { userPermissions } = event;
+  const userPermissions = event?.userPermissions;
 
   return (
     <div className="container mx-auto pb-16">
@@ -237,72 +254,95 @@ export default function EventPage({ params }: { params: { id: string } }) {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           {/* Admin/Member Controls */}
-          {userPermissions.isMember && (
-            <div className="flex flex-wrap gap-3">
-              {userPermissions.canEdit && (
-                <Button className="gap-2" asChild>
-                  <Link href={`/events/${event.id}/edit`}>
-                    <Pencil size={16} /> Edit Event
+          {isLoggedIn ? (
+            userPermissions.isMember ? (
+              <div className="flex flex-wrap gap-3">
+                {userPermissions.canEdit && (
+                  <Button className="gap-2" asChild>
+                    <Link href={`/events/${event.id}/edit`}>
+                      <Pencil size={16} /> Edit Event
+                    </Link>
+                  </Button>
+                )}
+                {userPermissions.canCreateUpdates && (
+                  <Button className="gap-2" asChild>
+                    <Link href={`/events/${event.id}/updates/create`}>
+                      <Plus size={16} /> Create Update
+                    </Link>
+                  </Button>
+                )}
+                {userPermissions.canCreateForms && (
+                  <Button asChild className="gap-2">
+                    <Link href={`/events/${event.id}/forms`}>
+                      <FileText size={16} /> Forms
+                    </Link>
+                  </Button>
+                )}
+                {/* QR Scanner Button for Members and Admins */}
+                <Button asChild variant="outline" className="gap-2">
+                  <Link href={`/events/${event.id}/scan`}>
+                    <QrCode size={16} /> Scan QR Codes
                   </Link>
                 </Button>
-              )}
-              {userPermissions.canCreateUpdates && (
-                <Button className="gap-2" asChild>
-                  <Link href={`/events/${event.id}/updates/create`}>
-                    <Plus size={16} /> Create Update
+                {/* Registration Control */}
+                {rsvpStatus && (
+                  <RegistrationControl 
+                    eventId={event.id} 
+                    registrationEnabled={rsvpStatus.registrationEnabled}
+                    onRegistrationChange={handleRegistrationChange}
+                  />
+                )}
+                {userPermissions.canDelete && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="gap-2">
+                        <Trash2 size={16} /> Delete Event
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete the event
+                          and all associated data including forms and responses.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteEvent}
+                          disabled={isDeleting}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {isDeleting ? "Deleting..." : "Delete Event"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                <Button asChild>
+                  <Link href={`/events/${event.id}/register`}>
+                    <Plus size={16} /> Register
                   </Link>
                 </Button>
-              )}
-              {userPermissions.canCreateForms && (
-                <Button asChild className="gap-2">
-                  <Link href={`/events/${event.id}/forms`}>
-                    <FileText size={16} /> Forms
-                  </Link>
+              </div>
+            )
+          ) : (
+
+            <Card className="mb-6">
+              <CardContent className="p-6 text-center">
+                <h3 className="mb-2 text-lg font-semibold">Join this event</h3>
+                <p className="mb-4 text-muted-foreground">
+                  Sign in to register for this event and access more features.
+                </p>
+                <Button asChild>
+                  <Link href="/auth/signin">Sign In</Link>
                 </Button>
-              )}
-              {/* QR Scanner Button for Members and Admins */}
-              <Button asChild variant="outline" className="gap-2">
-                <Link href={`/events/${event.id}/scan`}>
-                  <QrCode size={16} /> Scan QR Codes
-                </Link>
-              </Button>
-              {/* Registration Control */}
-              {rsvpStatus && (
-                <RegistrationControl 
-                  eventId={event.id} 
-                  registrationEnabled={rsvpStatus.registrationEnabled}
-                  onRegistrationChange={handleRegistrationChange}
-                />
-              )}
-              {userPermissions.canDelete && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="gap-2">
-                      <Trash2 size={16} /> Delete Event
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the event
-                        and all associated data including forms and responses.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteEvent}
-                        disabled={isDeleting}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        {isDeleting ? "Deleting..." : "Delete Event"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           <Card>
@@ -380,6 +420,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
             </TabsContent>
           </Tabs>
         </div>
+        
 
         <div className="space-y-6">
           <Card>
@@ -457,7 +498,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
           </Card>
 
           {/* QR Scanner Quick Access for Mobile */}
-          {userPermissions.isMember && (
+          {isLoggedIn && userPermissions.isMember && (
             <Card className="lg:hidden">
               <CardContent className="p-6">
                 <h3 className="mb-4 font-semibold">Event Management</h3>

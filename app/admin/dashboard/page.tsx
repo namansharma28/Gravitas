@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Users, CheckCircle, XCircle, Loader2, LogOut, Calendar, BarChart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { handleApiResponse } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -110,13 +111,22 @@ export default function AdminDashboardPage() {
           }
         });
 
-        if (!response.ok) {
+        const data = await handleApiResponse<{ isAdmin: boolean }>(response, {
+          router,
+          toast,
+          errorMessage: {
+            title: "Error",
+            description: "Authentication failed"
+          },
+          redirectOnAuthError: true
+        });
+
+        if (!data) {
           localStorage.removeItem('adminToken');
           router.push('/admin/login');
           return;
         }
 
-        const data = await response.json();
         if (!data.isAdmin) {
           localStorage.removeItem('adminToken');
           router.push('/admin/login');
@@ -163,24 +173,49 @@ export default function AdminDashboardPage() {
         })
       ]);
 
-      if (!pendingResponse.ok || !statsResponse.ok || !communityStatsResponse.ok) {
-        if (pendingResponse.status === 401 || statsResponse.status === 401 || communityStatsResponse.status === 401) {
-          localStorage.removeItem('adminToken');
-          router.push('/admin/login');
-          return;
-        }
-        throw new Error('Failed to fetch data');
+      // Check for authentication errors in any response
+      if (pendingResponse.status === 401 || statsResponse.status === 401 || communityStatsResponse.status === 401) {
+        localStorage.removeItem('adminToken');
+        router.push('/admin/login');
+        return;
       }
 
-      const [pendingData, statsData, communityStatsData] = await Promise.all([
-        pendingResponse.json(),
-        statsResponse.json(),
-        communityStatsResponse.json()
-      ]);
+      // Process each response individually
+      const pendingData = await handleApiResponse<PendingCommunity[]>(pendingResponse, {
+        router,
+        toast,
+        errorMessage: {
+          title: "Error",
+          description: "Failed to fetch pending communities"
+        },
+        redirectOnAuthError: true
+      });
+      
+      const statsData = await handleApiResponse<DashboardStats>(statsResponse, {
+        router,
+        toast,
+        errorMessage: {
+          title: "Error",
+          description: "Failed to fetch dashboard stats"
+        },
+        redirectOnAuthError: true
+      });
+      
+      const communityStatsData = await handleApiResponse<CommunityStats>(communityStatsResponse, {
+        router,
+        toast,
+        errorMessage: {
+          title: "Error",
+          description: "Failed to fetch community stats"
+        },
+        redirectOnAuthError: true
+      });
 
-      setPendingCommunities(pendingData);
-      setDashboardStats(statsData);
-      setCommunityStats(communityStatsData);
+      if (pendingData && statsData && communityStatsData) {
+        setPendingCommunities(pendingData as PendingCommunity[]);
+        setDashboardStats(statsData);
+        setCommunityStats(communityStatsData);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -203,21 +238,27 @@ export default function AdminDashboardPage() {
         }
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to approve community');
-      }
-      
-      // Update the UI
-      setPendingCommunities(prev => prev.filter(community => community.id !== id));
-      
-      // Refresh stats
-      fetchData();
-      
-      toast({
-        title: "Community Approved",
-        description: "The community has been approved and is now public",
+      const success = await handleApiResponse(response, {
+        router,
+        toast,
+        successMessage: {
+          title: "Community Approved",
+          description: "The community has been approved and is now public"
+        },
+        errorMessage: {
+          title: "Error",
+          description: "Failed to approve community"
+        },
+        redirectOnAuthError: true
       });
+      
+      if (success) {
+        // Update the UI
+        setPendingCommunities(prev => prev.filter(community => community.id !== id));
+        
+        // Refresh stats
+        fetchData();
+      }
     } catch (error) {
       console.error('Error approving community:', error);
       toast({
@@ -251,21 +292,27 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ reason: rejectionReason })
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to reject community');
-      }
-      
-      // Update the UI
-      setPendingCommunities(prev => prev.filter(community => community.id !== selectedCommunityId));
-      
-      // Refresh stats
-      fetchData();
-      
-      toast({
-        title: "Community Rejected",
-        description: "The community has been rejected",
+      const success = await handleApiResponse(response, {
+        router,
+        toast,
+        successMessage: {
+          title: "Community Rejected",
+          description: "The community has been rejected"
+        },
+        errorMessage: {
+          title: "Error",
+          description: "Failed to reject community"
+        },
+        redirectOnAuthError: true
       });
+      
+      if (success) {
+        // Update the UI
+        setPendingCommunities(prev => prev.filter(community => community.id !== selectedCommunityId));
+        
+        // Refresh stats
+        fetchData();
+      }
     } catch (error) {
       console.error('Error rejecting community:', error);
       toast({
@@ -285,11 +332,20 @@ export default function AdminDashboardPage() {
       localStorage.removeItem('adminToken');
       
       // Call logout API to clear cookies
-      await fetch('/api/admin/logout', { method: 'POST' });
+      const response = await fetch('/api/admin/logout', { method: 'POST' });
       
-      toast({
-        title: "Logged Out",
-        description: "You have been logged out of the admin dashboard",
+      await handleApiResponse(response, {
+        router,
+        toast,
+        successMessage: {
+          title: "Logged Out",
+          description: "You have been logged out of the admin dashboard"
+        },
+        errorMessage: {
+          title: "Error",
+          description: "Failed to log out"
+        },
+        redirectOnAuthError: false
       });
       
       router.push('/admin/login');

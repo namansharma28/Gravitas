@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, FileText, Users, Trash2, Pencil, Share2, Mail, QrCode, CheckSquare, Square, Download, FileSpreadsheet } from "lucide-react";
+import { Plus, FileText, Users, Trash2, Pencil, Share2, Mail, QrCode, CheckSquare, Square, Download, FileSpreadsheet, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +89,7 @@ export default function FormsPage({ params }: { params: { id: string } }) {
   const [isShortlistDialogOpen, setIsShortlistDialogOpen] = useState(false);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [exportingFormId, setExportingFormId] = useState<string | null>(null);
+  const isLoggedIn = !!session?.user;
 
   useEffect(() => {
     fetchForms();
@@ -97,6 +98,12 @@ export default function FormsPage({ params }: { params: { id: string } }) {
   async function fetchForms() {
     try {
       const response = await fetch(`/api/events/${params.id}/forms`);
+      if (response.status === 401) {
+        // User is not logged in, but we still want to show the page
+        // We'll just show an empty list of forms
+        setForms([]);
+        return;
+      }
       if (!response.ok) {
         throw new Error("Failed to fetch forms");
       }
@@ -114,6 +121,15 @@ export default function FormsPage({ params }: { params: { id: string } }) {
   }
 
   async function deleteForm(formId: string) {
+    if (!isLoggedIn) {
+      toast({
+        title: "Login required",
+        description: "You need to be logged in to delete forms.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setDeletingFormId(formId);
     try {
       const response = await fetch(`/api/events/${params.id}/forms/${formId}`, {
@@ -142,6 +158,15 @@ export default function FormsPage({ params }: { params: { id: string } }) {
   }
 
   async function exportFormResponses(formId: string, formTitle: string) {
+    if (!isLoggedIn) {
+      toast({
+        title: "Login required",
+        description: "You need to be logged in to export form responses.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setExportingFormId(formId);
     
     try {
@@ -165,7 +190,7 @@ export default function FormsPage({ params }: { params: { id: string } }) {
       let filename = `${formTitle.replace(/[^a-zA-Z0-9]/g, '_')}_responses.xlsx`;
       
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/); 
         if (filenameMatch) {
           filename = filenameMatch[1];
         }
@@ -250,25 +275,31 @@ export default function FormsPage({ params }: { params: { id: string } }) {
         <div>
           <h1 className="text-3xl font-bold">Registration Forms</h1>
           <p className="mt-2 text-muted-foreground">
-            Manage registration forms for your event
+            {isLoggedIn ? "Manage registration forms for your event" : "View registration forms for this event"}
           </p>
         </div>
-        <Button onClick={() => router.push(`/events/${params.id}/forms/create`)}>
-          <Plus className="mr-2 h-4 w-4" /> Create Form
-        </Button>
+        {isLoggedIn && (
+          <Button onClick={() => router.push(`/events/${params.id}/forms/create`)}>
+            <Plus className="mr-2 h-4 w-4" /> Create Form
+          </Button>
+        )}
       </div>
 
       {forms.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="mb-2 text-lg font-medium">No Forms Created</h3>
+            <h3 className="mb-2 text-lg font-medium">No Forms Available</h3>
             <p className="mb-4 text-center text-muted-foreground">
-              Create your first registration form to start collecting responses
+              {isLoggedIn 
+                ? "Create your first registration form to start collecting responses"
+                : "There are no registration forms available for this event yet"}
             </p>
-            <Button onClick={() => router.push(`/events/${params.id}/forms/create`)}>
-              <Plus className="mr-2 h-4 w-4" /> Create Form
-            </Button>
+            {isLoggedIn && (
+              <Button onClick={() => router.push(`/events/${params.id}/forms/create`)}>
+                <Plus className="mr-2 h-4 w-4" /> Create Form
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -283,6 +314,8 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                         {form.title}
                       </Link>
                       <div className="flex items-center gap-2">
+                    {isLoggedIn && (
+                      <>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -290,11 +323,11 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        
+                    
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
-                              <Share2 className="h-4 w-4" />
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -360,6 +393,25 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                      </>)}
+                      
+                      {!isLoggedIn && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              `${window.location.origin}/events/${params.id}/forms/${form.id}/submit`
+                            );
+                            toast({
+                              title: "Link copied",
+                              description: "Form submission link copied to clipboard",
+                            });
+                          }}
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+                      )}
                       </div>
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -383,7 +435,7 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                     <span>{form.responses.filter(r => r.checkedIn).length} checked in</span>
                   </div>
                   
-                  {form.responses.length > 0 && (
+                  {form.responses.length > 0 && isLoggedIn && (
                     <div className="flex flex-wrap gap-2">
                       <Button
                         variant="outline"
@@ -481,7 +533,7 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                           <TableHead className="w-12">
                             <Checkbox
                               checked={form.responses.every(r => selectedResponses.has(r.id))}
-                              onCheckedChange={(checked) => handleSelectAll(form.id, !!checked)}
+                              onCheckedChange={(checked: boolean | "indeterminate") => handleSelectAll(form.id, !!checked)}
                             />
                           </TableHead>
                           <TableHead>Participant</TableHead>
@@ -498,8 +550,8 @@ export default function FormsPage({ params }: { params: { id: string } }) {
                           <TableRow key={response.id}>
                             <TableCell>
                               <Checkbox
-                                checked={selectedResponses.has(response.id)}
-                                onCheckedChange={(checked) => handleSelectResponse(response.id, !!checked)}
+                                checked={form.responses.every(r => selectedResponses.has(r.id))}
+                                onCheckedChange={(checked: boolean | "indeterminate") => handleSelectResponse(response.id, !!checked)}
                               />
                             </TableCell>
                             <TableCell>

@@ -26,6 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { handleApiResponse } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -107,17 +108,25 @@ export default function CreateCommunityPage() {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to upload image');
-      }
+      const data = await handleApiResponse<{url: string}>(response, {
+        router,
+        toast,
+        errorMessage: {
+          title: "Error",
+          description: "Failed to upload image. Please try again.",
+        },
+        redirectOnAuthError: true
+      });
 
-      const data = await response.json();
-      if (type === 'avatar') {
-        setAvatarPreview(data.url);
-      } else {
-        setBannerPreview(data.url);
+      if (data) {
+        if (type === 'avatar') {
+          setAvatarPreview(data.url);
+        } else {
+          setBannerPreview(data.url);
+        }
+        return data.url;
       }
-      return data.url;
+      return null;
     } catch (error) {
       toast({
         title: "Error",
@@ -181,17 +190,22 @@ export default function CreateCommunityPage() {
         }),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create community');
-      }
-
-      const data = await response.json();
-      toast({
-        title: "Community Created",
-        description: `Successfully created @${values.handle}`,
+      const data = await handleApiResponse<{handle: string}>(response, {
+        router,
+        toast,
+        successMessage: {
+          title: "Community Created",
+          description: `Successfully created @${values.handle}`,
+        },
+        errorMessage: {
+          title: "Error",
+          description: "Failed to create community. Please try again.",
+        }
       });
-      router.push(`/communities/${data.handle}`);
+
+      if (data) {
+        router.push(`/communities/${data.handle}`);
+      }
     } catch (error: any) {
       toast({
         title: "Error",

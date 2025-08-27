@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
+import { handleApiResponse } from '@/lib/utils';
 import { useSession } from "next-auth/react";
 import { UserCheck, UserPlus, Loader2 } from "lucide-react";
 
@@ -28,6 +29,11 @@ export default function RegisterButton({ eventId, rsvpStatus, onRegistrationChan
 
   const handleRegister = async () => {
     if (!session) {
+      toast({
+        title: "Login Required",
+        description: "Please sign in to register for this event",
+        variant: "default"
+      });
       router.push('/auth/signin');
       return;
     }
@@ -52,17 +58,22 @@ export default function RegisterButton({ eventId, rsvpStatus, onRegistrationChan
           }),
         });
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to register');
-        }
-
-        toast({
-          title: "Registration Successful",
-          description: "You have been registered for this event!",
+        const data = await handleApiResponse(response, {
+          router,
+          toast,
+          successMessage: {
+            title: "Registration Successful",
+            description: "You have been registered for this event!",
+          },
+          errorMessage: {
+            title: "Registration Failed",
+            description: "Failed to register for event",
+          }
         });
 
-        onRegistrationChange();
+        if (data) {
+          onRegistrationChange();
+        }
       } catch (error: any) {
         toast({
           title: "Registration Failed",

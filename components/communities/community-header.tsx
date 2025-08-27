@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
+import { handleApiResponse } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,16 +57,24 @@ export default function CommunityHeader({ community, userPermissions }: Communit
         method: 'POST',
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await handleApiResponse<{ following: boolean }>(response, {
+        router,
+        toast,
+        successMessage: {
+          title: isFollowing ? "Unfollowed community" : "Following community",
+          description: isFollowing 
+            ? "You'll no longer see updates from this community"
+            : "You'll now see updates from this community",
+        },
+        errorMessage: {
+          title: "Error",
+          description: "Failed to follow/unfollow community",
+        }
+      });
+      
+      if (data) {
         setIsFollowing(data.following);
         setFollowersCount(prev => data.following ? prev + 1 : prev - 1);
-        toast({
-          title: data.following ? "Following community" : "Unfollowed community",
-          description: data.following 
-            ? "You'll now see updates from this community" 
-            : "You'll no longer see updates from this community",
-        });
       }
     } catch (error) {
       toast({

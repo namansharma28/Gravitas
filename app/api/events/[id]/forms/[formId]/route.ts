@@ -9,14 +9,8 @@ export async function GET(
   { params }: { params: { id: string; formId: string } }
 ) {
   try {
+    // Allow non-logged-in users to view form data
     const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
 
     if (!ObjectId.isValid(params.formId) || !ObjectId.isValid(params.id)) {
       return NextResponse.json(

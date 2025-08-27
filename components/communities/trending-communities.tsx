@@ -9,6 +9,8 @@ import { Users, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { handleApiResponse } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface Community {
   _id: string;
@@ -24,6 +26,7 @@ interface Community {
 export default function TrendingCommunities() {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const router = useRouter();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [followingStates, setFollowingStates] = useState<Record<string, boolean>>({});
@@ -35,8 +38,16 @@ export default function TrendingCommunities() {
   const fetchTrendingCommunities = async () => {
     try {
       const response = await fetch('/api/home/trending-communities');
-      if (response.ok) {
-        const data = await response.json();
+      const data = await handleApiResponse<Community[]>(response, {
+        router,
+        toast,
+        errorMessage: {
+          title: "Error",
+          description: "Failed to fetch trending communities"
+        }
+      });
+      
+      if (data) {
         setCommunities(data);
         
         // Initialize following states
@@ -71,8 +82,17 @@ export default function TrendingCommunities() {
         method: 'POST',
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await handleApiResponse<{following: boolean}>(response, {
+        router,
+        toast,
+        errorMessage: {
+          title: "Error",
+          description: "Failed to follow/unfollow community"
+        },
+        redirectOnAuthError: true
+      });
+      
+      if (data) {
         setFollowingStates(prev => ({
           ...prev,
           [communityId]: data.following
@@ -86,11 +106,7 @@ export default function TrendingCommunities() {
         });
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to follow/unfollow community",
-        variant: "destructive",
-      });
+      // Error is already handled by handleApiResponse
     }
   };
 
