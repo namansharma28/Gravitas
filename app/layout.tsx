@@ -3,7 +3,6 @@
 import './globals.css';
 
 import '../styles/md-editor.css'; // Import custom MD Editor styles
-import { metadata } from './metadata';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { Toaster } from "@/components/ui/toaster";
 import AuthProvider from '@/components/providers/session-provider';
@@ -11,8 +10,53 @@ import { NotificationProvider } from '@/components/notifications/notification-pr
 import Sidebar from '@/components/layout/sidebar';
 import Navbar from '@/components/layout/navbar';
 import { usePathname } from 'next/navigation';
+import type { Metadata } from "next";
 
 const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+export const metadata: Metadata = {
+  title: "Gravitas – Discover, Join & Create Communities and Events",
+  description:
+    "Gravitas is your all-in-one community and event management platform. Discover vibrant communities, explore upcoming events, connect with like-minded people, and create meaningful experiences. Join Gravitas to build, share, and grow together.",
+  keywords: [
+    "Gravitas",
+    "community platform",
+    "event management",
+    "online communities",
+    "social events",
+    "group activities",
+    "networking platform",
+    "connect with people",
+    "discover events",
+    "build communities",
+  ],
+  openGraph: {
+    title: "Gravitas – Communities, Events & Connections",
+    description:
+      "Discover and join thriving communities, attend exciting events, and build connections with Gravitas – a modern platform for collaboration, networking, and shared experiences.",
+    url: "https://gravitas.page",
+    siteName: "Gravitas",
+    images: [
+      {
+        url: "https://www.gravitas.page/logo.svg", // replace with your real image
+        width: 1200,
+        height: 630,
+        alt: "Gravitas – Communities & Events",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Gravitas – Communities, Events & Connections",
+    description:
+      "Explore communities, join events, and connect with people through Gravitas. A modern platform designed for collaboration and growth.",
+    images: ["https://www.gravitas.page/logo.svg"],
+  },
+};
+
+
 
 // Use local Inter font files to avoid network timeouts
 import localFont from 'next/font/local';
