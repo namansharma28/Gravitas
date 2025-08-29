@@ -139,7 +139,7 @@ export default function SignUpPage() {
 
   if (registrationComplete) {
     return (
-      <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
+      <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center absolute top-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -184,12 +184,18 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="container relative min-h-[calc(100vh-4rem)] flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+    <div className="container min-h-full flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0 absolute top-0">
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
         <div className="absolute inset-0 bg-gradient-to-b from-primary to-primary/90" />
         <div className="relative z-20 flex items-center gap-2 text-lg font-medium">
-          <CalendarDays size={24} />
-          <span>Gravitas</span>
+                <Image
+                    src="/logo.svg"
+                    alt="Gravitas"
+                    width={32}
+                    height={32}
+                    className="h-8 w-auto"
+                  />          
+                  <span>Gravitas</span>
         </div>
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
@@ -211,14 +217,14 @@ export default function SignUpPage() {
             <Card className="border-0 shadow-none">
               <CardHeader className="space-y-1">
                 <div className="flex items-center justify-center gap-2">
-                  <Image
+                  {/* <Image
                     src="/logo.svg"
                     alt="Gravitas"
                     width={32}
                     height={32}
                     className="h-8 w-auto"
                   />
-                  <span className="text-xl font-bold">Gravitas</span>
+                  <span className="text-xl font-bold">Gravitas</span> */}
                 </div>
                 <CardTitle className="text-center text-2xl">Create an account</CardTitle>
                 <CardDescription className="text-center">

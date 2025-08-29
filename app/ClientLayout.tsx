@@ -15,12 +15,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <AuthProvider>
         <NotificationProvider>
-          <div className="flex min-h-screen flex-col">
+          <div className="flex min-h-screen w-full flex-col mt-20">
             {!pathname?.startsWith('/auth') && <Navbar />}
-            <div className="flex flex-1">
+            <div className="flex w-full flex-1">
               {!pathname?.startsWith('/auth') && <Sidebar />}
-              <main className="flex-1">
-                {children}
+              <main className="flex-1 w-full overflow-auto">
+                <div className="w-full h-full">
+                  {children}
+                </div>
                 <Toaster />
               </main>
             </div>
