@@ -1,16 +1,8 @@
-'use client';
-
 import './globals.css';
-
 import '../styles/md-editor.css'; // Import custom MD Editor styles
-import { ThemeProvider } from '@/components/ui/theme-provider';
-import { Toaster } from "@/components/ui/toaster";
-import AuthProvider from '@/components/providers/session-provider';
-import { NotificationProvider } from '@/components/notifications/notification-provider';
-import Sidebar from '@/components/layout/sidebar';
-import Navbar from '@/components/layout/navbar';
-import { usePathname } from 'next/navigation';
-import type { Metadata } from "next";
+import ClientLayout from './ClientLayout';
+import { Metadata } from 'next';
+
 
 const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
@@ -28,20 +20,29 @@ export const metadata: Metadata = {
     "networking platform",
     "connect with people",
     "discover events",
-    "build communities",
+    "create events",
+    "community building",
+    "event organization",
+    "social networking",
+    "interest groups",
+    "local events",
+    "online groups",
+    "event discovery",
+    "community engagement",
   ],
+  metadataBase: new URL(baseUrl),
   openGraph: {
-    title: "Gravitas – Communities, Events & Connections",
+    title: "Gravitas – Discover, Join & Create Communities and Events",
     description:
-      "Discover and join thriving communities, attend exciting events, and build connections with Gravitas – a modern platform for collaboration, networking, and shared experiences.",
-    url: "https://gravitas.page",
+      "Gravitas is your all-in-one community and event management platform. Discover vibrant communities, explore upcoming events, connect with like-minded people, and create meaningful experiences. Join Gravitas to build, share, and grow together.",
+    url: baseUrl,
     siteName: "Gravitas",
     images: [
       {
-        url: "https://www.gravitas.page/logo.svg", // replace with your real image
+        url: `${baseUrl}/og-image.svg`,
         width: 1200,
         height: 630,
-        alt: "Gravitas – Communities & Events",
+        alt: "Gravitas Open Graph Image",
       },
     ],
     locale: "en_US",
@@ -49,52 +50,39 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Gravitas – Communities, Events & Connections",
-    description:
-      "Explore communities, join events, and connect with people through Gravitas. A modern platform designed for collaboration and growth.",
-    images: ["https://www.gravitas.page/logo.svg"],
+    title: "Gravitas – Discover, Join & Create Communities and Events",    description:
+      "Gravitas is your all-in-one community and event management platform. Discover vibrant communities, explore upcoming events, connect with like-minded people, and create meaningful experiences. Join Gravitas to build, share, and grow together.",
+    images: [`${baseUrl}/og-image.svg`],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  manifest: `${baseUrl}/manifest.json`,
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/icons/icon-192x192.png",
   },
 };
 
 
 
 // Use local Inter font files to avoid network timeouts
-import localFont from 'next/font/local';
-const inter = localFont({
-  src: [
-    {
-      path: '../public/fonts/Inter-Regular.woff2',
-      weight: '400',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/Inter-Medium.woff2',
-      weight: '500',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/Inter-SemiBold.woff2',
-      weight: '600',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/Inter-Bold.woff2',
-      weight: '700',
-      style: 'normal',
-    },
-  ],
-  variable: '--font-inter',
-  display: 'swap',
-});
+
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const isLandingPage = pathname === '/landing';
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -132,24 +120,8 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} font-sans`}>
-        <AuthProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <NotificationProvider>
-              {!isLandingPage && <Navbar />}
-              <div className="flex min-h-screen pt-16">
-                {!isLandingPage && <Sidebar />}
-                <main className={`flex-1 overflow-x-hidden px-2 pb-20 pt-6 md:px-4 md:pb-6 ${!isLandingPage ? 'md:pl-28 lg:px-6' : 'lg:px-6'}`}>{children}</main>
-              </div>
-              <Toaster />
-            </NotificationProvider>
-          </ThemeProvider>
-        </AuthProvider>
+      <body>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
