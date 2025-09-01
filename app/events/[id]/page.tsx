@@ -480,20 +480,14 @@ export default function EventPage({ params }: { params: { id: string } }) {
                   <p className="text-xs text-muted-foreground">Community</p>
                 </div>
               </div>
-              <Separator className="my-4" />
+              {/* <Separator className="my-4" />
               <h3 className="mb-3 font-semibold">Contact</h3>
               <div className="text-sm">
-                <p className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <a href="#" className="hover:underline">
-                    {event.community.handle}@example.com
-                  </a>
-                </p>
                 <p className="mt-2 flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span>Event Coordinator</span>
                 </p>
-              </div>
+              </div> */}
             </CardContent>
           </Card>
 

@@ -159,8 +159,8 @@ export default function CreateEventPage({ params }: { params: { handle: string }
       const eventData = {
         title: values.title,
         description: values.description,
-        date: values.startDate,
-        endDate: values.isMultiDay ? values.endDate : undefined,
+        date: new Date(values.startDate).toISOString().split('T')[0],
+        endDate: values.isMultiDay && values.endDate ? new Date(values.endDate).toISOString().split('T')[0] : undefined,
         time: values.time,
         location: values.location,
         capacity: values.capacity,
