@@ -323,11 +323,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
               </div>
             ) : (
               <div className="flex flex-wrap gap-3">
-                <Button asChild>
-                  <Link href={`/events/${event.id}/register`}>
-                    <Plus size={16} /> Register
-                  </Link>
-                </Button>
+                
               </div>
             )
           ) : (
