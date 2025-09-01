@@ -232,10 +232,6 @@ export default function CommunityHeader({ community, userPermissions }: Communit
             <Heart className="h-4 w-4" />
             <span>{followersCount} followers</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CalendarDays className="h-4 w-4" />
-            <span>10 upcoming events</span>
-          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
