@@ -150,24 +150,24 @@ export default function CalendarPage() {
 
   const getEventsForDate = (date: Date) => {
     // Format the date consistently to match the format used when grouping events
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = date.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
     return eventsByDate[dateStr] || [];
   };
 
   const getSelectedDateEvents = () => {
     // Create a date string in YYYY-MM-DD format without timezone offset
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    const dateStr = selectedDate.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
     return eventsByDate[dateStr] || [];
   };
 
   const hasEventsOnDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = date.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
     return eventsByDate[dateStr] && eventsByDate[dateStr].length > 0;
   };
 
   const getEventTypeForDate = (date: Date) => {
     // Create a date string in YYYY-MM-DD format without timezone offset
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = date.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
     const events = eventsByDate[dateStr] || [];
     if (events.length === 0) return null;
     
