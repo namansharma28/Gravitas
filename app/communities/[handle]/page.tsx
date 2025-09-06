@@ -13,6 +13,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StructuredData from '@/components/seo/structured-data';
+import { CalendarEventCard } from "@/components/events/calendar-event-card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -127,48 +128,57 @@ export default function CommunityPage({ params }: { params: { handle: string } }
   const fetchCommunityData = async () => {
     try {
       setError(null);
-      const [permissionsRes, membersRes, eventsRes, updatesRes] = await Promise.all([
-        fetch(`/api/communities/${params.handle}/permissions`),
-        fetch(`/api/communities/${params.handle}/members`),
-        fetch(`/api/communities/${params.handle}/events`),
-        fetch(`/api/communities/${params.handle}/updates`)
-      ]);
-
-      // Check each response individually and provide specific error messages
+      // Always fetch permissions and events for all users (logged in or not)
+      // Only fetch members and updates if needed
+      const permissionsRes = await fetch(`/api/communities/${params.handle}/permissions`);
+      
+      // Check permissions response first
       if (!permissionsRes.ok) {
         if (permissionsRes.status === 404) {
           throw new Error('Community not found');
         }
         throw new Error(`Failed to fetch community permissions: ${permissionsRes.status}`);
       }
-
-      if (!membersRes.ok) {
-        console.warn(`Failed to fetch members: ${membersRes.status}`);
-      }
-
-      if (!eventsRes.ok) {
-        console.warn(`Failed to fetch events: ${eventsRes.status}`);
-      }
-
-      if (!updatesRes.ok) {
-        console.warn(`Failed to fetch updates: ${updatesRes.status}`);
-      }
-
-      const [permissionsData, membersData, eventsData, updatesData] = await Promise.all([
-        permissionsRes.json(),
-        membersRes.ok ? membersRes.json() : [],
-        eventsRes.ok ? eventsRes.json() : [],
-        updatesRes.ok ? updatesRes.json() : []
-      ]);
-
-      // Set community data first
+      
+      // Get permissions data first to set community
+      const permissionsData = await permissionsRes.json();
       setCommunity(permissionsData.community);
       setUserPermissions(permissionsData.userPermissions);
-      setMembers(membersData);
-      setEvents(eventsData);
       
-      // Transform updates to match UpdateCard component's expected structure
-      const transformedUpdates = updatesData.map((update: any) => ({
+      // Fetch events for all users (logged in or not)
+      const eventsRes = await fetch(`/api/communities/${params.handle}/events`);
+      if (!eventsRes.ok) {
+        console.warn(`Failed to fetch events: ${eventsRes.status}`);
+      } else {
+        const eventsData = await eventsRes.json();
+        setEvents(eventsData);
+      }
+      
+      // Only fetch members and updates if user is logged in
+      if (session?.user) {
+        const [membersRes, updatesRes] = await Promise.all([
+          fetch(`/api/communities/${params.handle}/members`),
+          fetch(`/api/communities/${params.handle}/updates`)
+        ]);
+        
+        if (!membersRes.ok) {
+          console.warn(`Failed to fetch members: ${membersRes.status}`);
+        }
+        
+        if (!updatesRes.ok) {
+          console.warn(`Failed to fetch updates: ${updatesRes.status}`);
+        }
+        
+        // Process members and updates data
+        const [membersData, updatesData] = await Promise.all([
+          membersRes.ok ? membersRes.json() : [],
+          updatesRes.ok ? updatesRes.json() : []
+        ]);
+        
+        setMembers(membersData);
+        
+        // Transform updates to match UpdateCard component's expected structure
+        const transformedUpdates = updatesData.map((update: any) => ({
         id: update.id,
         title: update.title || 'Community Update',
         content: update.content,
@@ -192,6 +202,11 @@ export default function CommunityPage({ params }: { params: { handle: string } }
       }));
       
       setUpdates(transformedUpdates);
+      } else {
+        // For non-logged in users, set empty arrays for members and updates
+        setMembers([]);
+        setUpdates([]);
+      }
     } catch (error) {
       console.error('Error fetching community data:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load community data';
@@ -347,15 +362,46 @@ export default function CommunityPage({ params }: { params: { handle: string } }
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
               <div className="lg:col-span-2 space-y-4">
                 {userPermissions.isVisitor ? (
-                  <Card className="p-4 sm:p-8 text-center">
-                    <h3 className="mb-2 text-lg font-semibold">Join the Community</h3>
-                    <p className="mb-4 text-muted-foreground">
-                      Sign in to see updates and interact with this community.
-                    </p>
-                    <Button asChild>
-                      <Link href="/auth/signin">Sign In</Link>
-                    </Button>
-                  </Card>
+                  <>
+                    {/* Show upcoming events for non-logged in users */}
+                    {events.length > 0 && (
+                      <div className="space-y-4 mb-6">
+                        <h3 className="text-lg font-semibold mb-2">Upcoming Events</h3>
+                        <div className="grid grid-cols-1 gap-4">
+                          {events
+                            .filter(event => new Date(event.date) >= new Date())
+                            .slice(0, 3)
+                            .map(event => (
+                              <CalendarEventCard 
+                                key={event.id} 
+                                event={{
+                                  ...event,
+                                  creatorId: '', // Add default creatorId
+                                  community: {
+                                    id: community.id,
+                                    name: community.name,
+                                    handle: community.handle,
+                                    avatar: community.avatar
+                                  }
+                                }}
+                                variant="horizontal"
+                              />
+                            ))
+                          }
+                        </div>
+                      </div>
+                    )}
+                    
+                    <Card className="p-4 sm:p-8 text-center">
+                      <h3 className="mb-2 text-lg font-semibold">Join the Community</h3>
+                      <p className="mb-4 text-muted-foreground">
+                        Sign in to see updates and interact with this community.
+                      </p>
+                      <Button asChild>
+                        <Link href="/auth/signin">Sign In</Link>
+                      </Button>
+                    </Card>
+                  </>
                 ) : (
                   <>
                     {userPermissions.canCreateEvents && (
@@ -369,18 +415,53 @@ export default function CommunityPage({ params }: { params: { handle: string } }
                       </div>
                     )}
                     <div className="space-y-4">
+                      {/* Show upcoming events first */}
+                      {events.length > 0 && (
+                        <>
+                          <h3 className="text-lg font-semibold mb-2">Upcoming Events</h3>
+                          <div className="grid grid-cols-1 gap-4 mb-6">
+                            {events
+                              .filter(event => new Date(event.date) >= new Date())
+                              .slice(0, 3)
+                              .map(event => (
+                                  <Link key={event.id} href={`/events/${event.id}`}>
+                                <CalendarEventCard 
+                                  key={event.id} 
+                                  event={{
+                                  ...event,
+                                  creatorId: '', // Add default creatorId
+                                  community: {
+                                    id: community.id,
+                                    name: community.name,
+                                    handle: community.handle,
+                                    avatar: community.avatar
+                                  }
+                                }} 
+                                  variant="horizontal"
+                                />
+</Link>
+                              ))
+                            }
+                          </div>
+                        </>
+                      )}
+                      
+                      {/* Then show updates */}
                       {updates.length > 0 ? (
-                        updates.map((update) => (
-                          <UpdateCard
-                            key={update.id}
-                            update={update}
-                            eventId={community.id}
-                            userPermissions={{
-                              isMember: userPermissions.isMember,
-                              isAdmin: userPermissions.isAdmin
-                            }}
-                          />
-                        ))
+                        <>
+                          <h3 className="text-lg font-semibold mb-2">Community Updates</h3>
+                          {updates.map((update) => (
+                            <UpdateCard
+                              key={update.id}
+                              update={update}
+                              eventId={community.id}
+                              userPermissions={{
+                                isMember: userPermissions.isMember,
+                                isAdmin: userPermissions.isAdmin
+                              }}
+                            />
+                          ))}
+                        </>
                       ) : (
                         <Card>
                           <CardContent className="p-8 text-center">

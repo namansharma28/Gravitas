@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DebouncedInput } from "@/components/ui/debounced-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -440,11 +441,11 @@ export default function AdminCommunitiesPage() {
                 <div className="flex flex-col md:flex-row gap-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
+                    <DebouncedInput
                       placeholder="Search communities..."
                       className="pl-10 w-full md:w-[250px]"
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(value) => setSearchQuery(value)}
                     />
                   </div>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>

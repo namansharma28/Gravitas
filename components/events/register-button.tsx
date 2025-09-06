@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { handleApiResponse } from '@/lib/utils';
 import { useSession } from "next-auth/react";
 import { UserCheck, UserPlus, Loader2 } from "lucide-react";
+import Link from "next/link";
 
 interface RegisterButtonProps {
   eventId: string;
@@ -87,6 +88,17 @@ export default function RegisterButton({ eventId, rsvpStatus, onRegistrationChan
   };
 
   if (!rsvpStatus.registrationEnabled) {
+    // For non-logged in users, show sign in to register button instead of disabled button
+    if (!session) {
+      return (
+        <Button asChild className="w-full gap-2" size="lg">
+          <Link href="/auth/signin">
+            <UserPlus className="h-4 w-4" />
+            Sign in to Register
+          </Link>
+        </Button>
+      );
+    }
     return (
       <Button disabled variant="outline" className="w-full">
         Registration Not Available
@@ -111,6 +123,18 @@ export default function RegisterButton({ eventId, rsvpStatus, onRegistrationChan
     );
   }
 
+  // For non-logged in users, show a direct sign in button instead of going through handleRegister
+  if (!session) {
+    return (
+      <Button asChild className="w-full gap-2" size="lg">
+        <Link href="/auth/signin">
+          <UserPlus className="h-4 w-4" />
+          Sign in to Register
+        </Link>
+      </Button>
+    );
+  }
+  
   return (
     <Button 
       onClick={handleRegister} 

@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useTheme } from "next-themes";
+import dynamic from 'next/dynamic';
+
+const MDMarkdown = dynamic(
+  () => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown),
+  { ssr: false }
+);
 import { CalendarIcon, ChevronLeft, ChevronRight, Plus, Filter, MapPin, Clock, Users, Calendar as CalendarDays } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import FeedCard from "@/components/feed/feed-card";
 
 interface CalendarEvent {
   id: string;
@@ -49,6 +57,7 @@ interface EventsByDate {
 
 export default function CalendarPage() {
   const { data: session } = useSession();
+  const { theme } = useTheme();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -86,6 +95,7 @@ export default function CalendarPage() {
         // Group events by date
         const grouped: EventsByDate = {};
         data.forEach((event: CalendarEvent) => {
+          // Ensure we're working with the date string in ISO format (YYYY-MM-DD)
           const eventDate = event.date;
           if (!grouped[eventDate]) {
             grouped[eventDate] = [];
@@ -139,20 +149,26 @@ export default function CalendarPage() {
   };
 
   const getEventsForDate = (date: Date) => {
+    // Format the date consistently to match the format used when grouping events
     const dateStr = date.toISOString().split('T')[0];
     return eventsByDate[dateStr] || [];
   };
 
   const getSelectedDateEvents = () => {
-    return getEventsForDate(selectedDate);
+    // Create a date string in YYYY-MM-DD format without timezone offset
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    return eventsByDate[dateStr] || [];
   };
 
   const hasEventsOnDate = (date: Date) => {
-    return getEventsForDate(date).length > 0;
+    const dateStr = date.toISOString().split('T')[0];
+    return eventsByDate[dateStr] && eventsByDate[dateStr].length > 0;
   };
 
   const getEventTypeForDate = (date: Date) => {
-    const events = getEventsForDate(date);
+    // Create a date string in YYYY-MM-DD format without timezone offset
+    const dateStr = date.toISOString().split('T')[0];
+    const events = eventsByDate[dateStr] || [];
     if (events.length === 0) return null;
     
     const hasRegistered = events.some(e => e.userRegistered);
@@ -413,74 +429,21 @@ export default function CalendarPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
                       >
-                        <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                          <div className="relative">
-                            <div 
-                              className="h-24 md:h-32 w-full bg-gradient-to-r from-blue-500 to-purple-600"
-                              style={{
-                                backgroundImage: event.image 
-                                  ? `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${event.image})`
-                                  : undefined,
-                                backgroundSize: "cover",
-                                backgroundPosition: "center",
+                        <Link key={event.id} href={`/events/${event.id}`}>
+                            <FeedCard
+                              item={{
+                                id: event.id,
+                                type: "event",
+                                title: event.title,
+                                content: event.description,
+                                date: event.date,
+                                image: event.image,
+                                community: event.community,
+                                eventId: event.id,
+                                eventDate: `${new Date(event.date).toLocaleDateString()} ${formatEventTime(event.time)}`,
                               }}
                             />
-                            <div className="absolute top-2 right-2 md:top-4 md:right-4">
-                              {getEventTypeBadge(event)}
-                            </div>
-                            <div className="absolute bottom-0 left-0 p-3 md:p-4 text-white">
-                              <h3 className="text-base md:text-lg font-bold mb-1">{event.title}</h3>
-                              <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3 md:h-4 md:w-4" />
-                                  <span>{formatEventTime(event.time)}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3 md:h-4 md:w-4" />
-                                  <span className="truncate max-w-[120px] md:max-w-[150px]">{event.location}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <CardContent className="p-3 md:p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage src={event.community.avatar} />
-                                  <AvatarFallback>{event.community.name.substring(0, 2)}</AvatarFallback>
-                                </Avatar>
-                                <Link 
-                                  href={`/communities/${event.community.handle}`} 
-                                  className="text-sm font-medium hover:underline"
-                                >
-                                  {event.community.name}
-                                </Link>
-                              </div>
-                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                <Users className="h-4 w-4" />
-                                <span>{event.registrationCount}/{event.capacity}</span>
-                              </div>
-                            </div>
-                            
-                            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                              {event.description}
-                            </p>
-                            
-                            <div className="flex gap-2">
-                              <Button asChild className="flex-1">
-                                <Link href={`/events/${event.id}`}>
-                                  View Details
-                                </Link>
-                              </Button>
-                              {!event.userRegistered && (
-                                <Button variant="outline" className="flex-1">
-                                  Register
-                                </Button>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
+                        </Link>
                       </motion.div>
                     ))}
                   </motion.div>

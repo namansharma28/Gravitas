@@ -91,9 +91,8 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Allow non-logged-in users to fetch events
+    const userId = session?.user?.id;
 
     const client = await clientPromise;
     const db = client.db('gravitas');
@@ -123,6 +122,13 @@ export async function GET(
       isMultiDay: event.isMultiDay || false,
       attendees: event.attendees || [],
       interested: event.interested || [],
+      community: {
+        id: community._id.toString(),
+        name: community.name,
+        handle: community.handle,
+        avatar: community.avatar || ''
+      },
+      attendeesCount: (event.attendees || []).length
     })));
   } catch (error: any) {
     console.error('Error fetching events:', error);

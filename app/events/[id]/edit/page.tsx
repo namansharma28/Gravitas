@@ -27,6 +27,12 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import dynamic from 'next/dynamic';
+
+const MDEditor = dynamic(
+  () => import('@uiw/react-md-editor'),
+  { ssr: false }
+);
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -84,6 +90,7 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
   const [isLoading, setIsLoading] = useState(false);
   const [event, setEvent] = useState<Event | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [description, setDescription] = useState('');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -136,6 +143,7 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
           capacity: data.capacity,
           image: data.image || "",
         });
+        setDescription(data.description || '');
       } catch (error) {
         console.error('Error fetching event:', error);
         toast({
@@ -303,11 +311,15 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Tell people what your event is about..."
-                          className="min-h-[120px] resize-y"
-                          {...field}
-                        />
+                        <div data-color-mode="light">
+                          <MDEditor
+                            value={description}
+                            onChange={(value) => setDescription(value || '')}
+                            preview="edit"
+                            height={200}
+                            className="mb-4"
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

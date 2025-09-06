@@ -208,6 +208,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
+    // Allow non-logged-in users to fetch RSVP status
     
     const client = await clientPromise;
     const db = client.db('gravitas');

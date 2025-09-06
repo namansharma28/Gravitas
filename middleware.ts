@@ -25,9 +25,9 @@ export async function middleware(request: NextRequest) {
   // Check if the request is for an API endpoint that requires authentication
   // This allows viewing pages but prevents unauthenticated API calls
   if (path.startsWith('/api/') && 
+      !path.includes('/auth/register') &&
       (path.includes('/follow') || 
        path.includes('/rsvp') || 
-       path.includes('/register') || 
        path.includes('/submit') || 
        path.includes('/create') || 
        path.includes('/update') || 

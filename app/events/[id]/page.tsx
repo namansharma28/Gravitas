@@ -3,6 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useTheme } from "next-themes";
+import dynamic from 'next/dynamic';
+
+const MDEditor = dynamic(
+  () => import('@uiw/react-md-editor'),
+  { ssr: false }
+);
+const Preview = dynamic(
+  () => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown),
+  { ssr: false }
+);
 import { Calendar, Clock, MapPin, Users, Share2, ArrowLeft, Pencil, Plus, FileText, Mail, User, Trash2, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +98,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const { theme } = useTheme();
   const [event, setEvent] = useState<Event | null>(null);
   const [updates, setUpdates] = useState<Update[]>([]);
   const [rsvpStatus, setRSVPStatus] = useState<RSVPStatus | null>(null);
@@ -252,7 +264,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-6 lg:col-span-2 order-last lg:order-none">
           {/* Admin/Member Controls */}
           {isLoggedIn ? (
             userPermissions.isMember ? (
@@ -375,10 +387,11 @@ export default function EventPage({ params }: { params: { id: string } }) {
               </div>
 
               <Separator className="my-6" />
-
-              <div>
-                <h2 className="mb-4 text-xl font-semibold">About This Event</h2>
-                <p className="text-muted-foreground">{event.description}</p>
+              <div data-color-mode={theme === "dark" ? "dark" : "light"}>
+                <Preview
+                  source={event.description}
+                  className="prose max-w-none"
+                />
               </div>
             </CardContent>
           </Card>
@@ -418,13 +431,14 @@ export default function EventPage({ params }: { params: { id: string } }) {
         </div>
         
 
-        <div className="space-y-6">
+        <div className="space-y-6 order-first lg:order-none">
           <Card>
             <CardContent className="p-6">
               <div className="flex justify-between">
                 <h3 className="font-semibold">Registration</h3>
                 <Badge variant="outline" className="border-green-300 text-green-600 dark:border-green-800 dark:text-green-400">
-                  {rsvpStatus?.registrationEnabled ? 'Open' : 'Closed'}
+                  {/* Always show as Open for non-logged in users */}
+                  {!session ? 'Open' : (rsvpStatus?.registrationEnabled ? 'Open' : 'Closed')}
                 </Badge>
               </div>
               <div className="mt-4 space-y-4">

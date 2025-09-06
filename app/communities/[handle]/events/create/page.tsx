@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import dynamic from 'next/dynamic';
+import { useTheme } from "next-themes";
+
+const MDEditor = dynamic(
+  () => import('@uiw/react-md-editor'),
+  { ssr: false }
+);
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CalendarDays, Clock, MapPin, ArrowLeft, Upload, X } from "lucide-react";
@@ -64,6 +71,7 @@ const formSchema = z.object({
 export default function CreateEventPage({ params }: { params: { handle: string } }) {
   const router = useRouter();
   const { toast } = useToast();
+  const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isMultiDay, setIsMultiDay] = useState(false);
@@ -242,11 +250,15 @@ export default function CreateEventPage({ params }: { params: { handle: string }
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Tell people what your event is about..."
-                          className="min-h-[120px] resize-y"
-                          {...field}
-                        />
+                        <div data-color-mode={theme === "dark" ? "dark" : "light"}>
+                          <MDEditor
+                            value={field.value}
+                            onChange={(value) => field.onChange(value || '')}
+                            preview="edit"
+                            height={200}
+                            className="mb-4"
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
