@@ -2,6 +2,7 @@ import './globals.css';
 import '../styles/md-editor.css'; // Import custom MD Editor styles
 import ClientLayout from './ClientLayout';
 import { Metadata } from 'next';
+import { Analytics } from '@vercel/analytics/next';
 
 
 const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
@@ -122,6 +123,7 @@ export default function RootLayout({
       </head>
       <body>
         <ClientLayout>{children}</ClientLayout>
+        <Analytics />
       </body>
     </html>
   );
