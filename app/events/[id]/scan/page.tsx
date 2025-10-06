@@ -37,6 +37,18 @@ interface EventDetails {
   location: string;
 }
 
+interface FixedQrScannerProps {
+  delay?: number;
+  onError?: (error: any) => void;
+  onScan?: (data: any) => void;
+  style?: React.CSSProperties;
+  constraints?: MediaStreamConstraints;
+}
+
+const QrScannerFixed = QrScanner as unknown as React.FC<FixedQrScannerProps>;
+
+
+
 export default function QRScanPage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -48,6 +60,7 @@ export default function QRScanPage({ params }: { params: { id: string } }) {
   const [manualCode, setManualCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([]);
+  const [useBackCamera, setUseBackCamera] = useState(true);
 
   useEffect(() => {
     fetchEventDetails();
@@ -76,7 +89,7 @@ export default function QRScanPage({ params }: { params: { id: string } }) {
 
   const processQRCode = async (qrData: string) => {
     setIsProcessing(true);
-    
+
     try {
       let parsedData;
       try {
@@ -107,7 +120,7 @@ export default function QRScanPage({ params }: { params: { id: string } }) {
       }
 
       const result = await response.json();
-      
+
       const scanResult: ScanResult = {
         ...parsedData,
         isValid: result.valid,
@@ -136,7 +149,7 @@ export default function QRScanPage({ params }: { params: { id: string } }) {
         description: error.message || "Failed to process QR code",
         variant: "destructive",
       });
-      
+
       setScanResult({
         participantId: '',
         name: 'Unknown',
@@ -239,12 +252,16 @@ export default function QRScanPage({ params }: { params: { id: string } }) {
               ) : (
                 <div className="space-y-4">
                   <div className="relative">
-                    <QrScanner
+                    <QrScannerFixed
                       delay={300}
                       onError={handleError}
                       onScan={handleScan}
-                      style={{ width: '100%', height: '300px' }}
+                      constraints={{
+                        video: { facingMode: { ideal: useBackCamera ? "environment" : "user" } },
+                      }}
+                      style={{ width: "100%", height: "300px" }}
                     />
+
                     {isProcessing && (
                       <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                         <div className="text-white text-center">
@@ -254,13 +271,23 @@ export default function QRScanPage({ params }: { params: { id: string } }) {
                       </div>
                     )}
                   </div>
-                  <Button 
-                    onClick={() => setIsScanning(false)} 
-                    variant="outline" 
-                    className="w-full"
-                  >
-                    Stop Camera
-                  </Button>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => setIsScanning(false)}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Stop Camera
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setUseBackCamera(prev => !prev)}
+                      className="w-full"
+                    >
+                      Switch to {useBackCamera ? "Front" : "Back"} Camera
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -281,8 +308,8 @@ export default function QRScanPage({ params }: { params: { id: string } }) {
                   placeholder="Paste QR code data here"
                 />
               </div>
-              <Button 
-                onClick={handleManualEntry} 
+              <Button
+                onClick={handleManualEntry}
                 disabled={!manualCode.trim() || isProcessing}
                 className="w-full"
               >
