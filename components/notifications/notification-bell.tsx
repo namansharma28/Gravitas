@@ -26,7 +26,7 @@ export default function NotificationBell() {
     if (isBrowserNotificationSupported()) {
       const permission = getNotificationPermission();
       
-      // Show prompt if permission is not granted or denied
+      // Only show prompt if permission is default (not granted or denied)
       if (permission === 'default') {
         // Only show after user has been on the site for a while
         const timer = setTimeout(() => {
@@ -57,7 +57,7 @@ export default function NotificationBell() {
       </Popover>
 
       {showPermissionPrompt && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-16">
           <div className="mt-8 max-h-[calc(100vh-8rem)] overflow-y-auto">
             <NotificationPermissionPrompt onClose={() => setShowPermissionPrompt(false)} />
           </div>

@@ -40,6 +40,33 @@ export async function POST(
       { $addToSet: { members: userId } }
     );
 
+    // Send notification to community admins about new member
+    try {
+      const newMember = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+      if (newMember) {
+        const adminNotifications = community.admins
+          .filter((adminId: string) => adminId !== session.user.id) // Don't notify the admin who added the member
+          .map((adminId: string) => ({
+            userId: adminId,
+            type: 'community_joined',
+            title: `New Member in ${community.name}`,
+            description: `${newMember.name} joined ${community.name}`,
+            linkUrl: `/communities/${community.handle}`,
+            communityId: community._id,
+            senderId: session.user.id,
+            read: false,
+            createdAt: new Date(),
+          }));
+
+        if (adminNotifications.length > 0) {
+          await db.collection('notifications').insertMany(adminNotifications);
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending community join notifications:', notificationError);
+      // Don't fail the join if notifications fail
+    }
+
     return NextResponse.json({ success: true, message: 'Member added successfully' });
   } catch (error: any) {
     console.error('Error adding member:', error);

@@ -39,6 +39,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     // Check if notifications are supported
@@ -47,6 +49,68 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setPermission(getNotificationPermission() || 'default');
     }
   }, []);
+
+  useEffect(() => {
+    // Fetch notifications when user is logged in
+    if (session?.user?.id) {
+      fetchNotifications();
+    }
+  }, [session?.user?.id]);
+
+  const fetchNotifications = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      const response = await fetch('/api/notifications');
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data);
+        setUnreadCount(data.filter((n: Notification) => !n.read).length);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notificationId: id }),
+      });
+
+      if (response.ok) {
+        setNotifications(prev => 
+          prev.map(n => n.id === id ? { ...n, read: true } : n)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ markAllAsRead: true }),
+      });
+
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
 
   const requestPermission = async (): Promise<boolean> => {
     if (!isSupported) {
@@ -112,11 +176,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     sendNotification,
     isSupported,
     permission,
-    unreadCount: 0, // TODO: Implement actual unread count logic
-    notifications: [], // TODO: Implement actual notifications fetching
-    fetchNotifications: () => {}, // TODO: Implement actual fetch logic
-    markAsRead: () => {}, // TODO: Implement actual mark as read logic
-    markAllAsRead: () => {}, // TODO: Implement actual mark all as read logic
+    unreadCount,
+    notifications,
+    fetchNotifications,
+    markAsRead,
+    markAllAsRead,
   };
 
   return (

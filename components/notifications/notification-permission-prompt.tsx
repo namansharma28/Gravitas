@@ -11,10 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { 
-  isBrowserNotificationSupported, 
-  getNotificationPermission, 
-  requestNotificationPermission 
+import {
+  isBrowserNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission
 } from "@/lib/notification";
 
 interface NotificationPermissionPromptProps {
@@ -28,9 +28,15 @@ export default function NotificationPermissionPrompt({ onClose }: NotificationPe
   useEffect(() => {
     setIsSupported(isBrowserNotificationSupported());
     if (isBrowserNotificationSupported()) {
-      setPermission(getNotificationPermission());
+      const currentPermission = getNotificationPermission();
+      setPermission(currentPermission);
+
+      // If permission is already granted, close the prompt immediately
+      if (currentPermission === 'granted') {
+        onClose();
+      }
     }
-  }, []);
+  }, [onClose]);
 
   const handleRequestPermission = async () => {
     const granted = await requestNotificationPermission();
@@ -40,7 +46,8 @@ export default function NotificationPermissionPrompt({ onClose }: NotificationPe
     }
   };
 
-  if (!isSupported || permission === 'granted') {
+  // Don't show if not supported, already granted, or denied
+  if (!isSupported || permission === 'granted' || permission === 'denied') {
     return null;
   }
 

@@ -84,3 +84,73 @@ export const formatNotificationForBrowser = (notification: any) => {
     }
   };
 };
+
+// Notification types
+export enum NotificationType {
+  EVENT_CREATED = 'event_created',
+  EVENT_UPDATED = 'event_updated',
+  EVENT_REMINDER = 'event_reminder',
+  COMMUNITY_POST = 'community_post',
+  COMMUNITY_JOINED = 'community_joined',
+  FORM_RESPONSE = 'form_response',
+  RSVP_CONFIRMED = 'rsvp_confirmed',
+  EVENT_CANCELLED = 'event_cancelled',
+  COMMUNITY_UPDATE = 'community_update',
+}
+
+// Calculate time until event
+export const getTimeUntilEvent = (eventDate: string, eventTime: string): string => {
+  const eventDateTime = new Date(`${eventDate} ${eventTime}`);
+  const now = new Date();
+  const timeDiff = eventDateTime.getTime() - now.getTime();
+  
+  if (timeDiff <= 0) {
+    return 'Event has started or passed';
+  }
+  
+  const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (days > 0) {
+    return `${days} day${days > 1 ? 's' : ''} ${hours} hour${hours !== 1 ? 's' : ''}`;
+  } else if (hours > 0) {
+    return `${hours} hour${hours > 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  } else {
+    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  }
+};
+
+// Send event reminder notification
+export const sendEventReminderNotification = async (
+  eventId: string,
+  eventTitle: string,
+  eventDate: string,
+  eventTime: string,
+  eventLocation: string
+) => {
+  try {
+    const response = await fetch('/api/notifications/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: NotificationType.EVENT_REMINDER,
+        title: `Event Reminder: ${eventTitle}`,
+        description: `${eventTitle} starts in ${getTimeUntilEvent(eventDate, eventTime)} at ${eventLocation}`,
+        linkUrl: `/events/${eventId}`,
+        eventId,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to send notification');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending event reminder:', error);
+    throw error;
+  }
+};

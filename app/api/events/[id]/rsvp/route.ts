@@ -179,6 +179,37 @@ export async function POST(
           });
         }
 
+        // Send notification to event organizers about new RSVP
+        try {
+          const community = await db.collection('communities').findOne({ 
+            _id: new ObjectId(event.communityId) 
+          });
+          
+          if (community) {
+            const organizers = [event.creatorId, ...community.admins];
+            const uniqueOrganizers = Array.from(new Set(organizers)).filter(id => id !== session.user.id);
+            
+            const notifications = uniqueOrganizers.map((organizerId: string) => ({
+              userId: organizerId,
+              type: 'rsvp_confirmed',
+              title: `New RSVP: ${event.title}`,
+              description: `${session.user.name} confirmed their attendance for ${event.title}`,
+              linkUrl: `/events/${params.id}`,
+              eventId: new ObjectId(params.id),
+              senderId: session.user.id,
+              read: false,
+              createdAt: new Date(),
+            }));
+
+            if (notifications.length > 0) {
+              await db.collection('notifications').insertMany(notifications);
+            }
+          }
+        } catch (notificationError) {
+          console.error('Error sending RSVP notifications:', notificationError);
+          // Don't fail the RSVP if notifications fail
+        }
+
         return NextResponse.json({
           success: true,
           message: 'Successfully registered for the event',

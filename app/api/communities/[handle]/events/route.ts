@@ -64,6 +64,32 @@ export async function POST(
       { $push: { events: event.insertedId } } as any
     );
 
+    // Send notification to community members about new event
+    try {
+      const communityMembers = community.members || [];
+      const notifications = communityMembers
+        .filter((memberId: string) => memberId !== session.user.id) // Don't notify the creator
+        .map((memberId: string) => ({
+          userId: memberId,
+          type: 'event_created',
+          title: `New Event: ${title}`,
+          description: `${community.name} created a new event "${title}" on ${date} at ${time}`,
+          linkUrl: `/events/${event.insertedId}`,
+          eventId: event.insertedId,
+          communityId: community._id,
+          senderId: session.user.id,
+          read: false,
+          createdAt: new Date(),
+        }));
+
+      if (notifications.length > 0) {
+        await db.collection('notifications').insertMany(notifications);
+      }
+    } catch (notificationError) {
+      console.error('Error sending event creation notifications:', notificationError);
+      // Don't fail the event creation if notifications fail
+    }
+
     return NextResponse.json({
       id: event.insertedId,
       title,

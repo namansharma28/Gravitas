@@ -26,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import UpdateCard from "@/components/events/update-card";
 import RegisterButton from "@/components/events/register-button";
 import RegistrationControl from "@/components/events/registration-control";
+import EventNotificationButton from "@/components/notifications/event-notification-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -160,7 +161,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
       });
       return;
     }
-    
+
     setIsDeleting(true);
     try {
       const response = await fetch(`/api/events/${params.id}`, {
@@ -234,10 +235,10 @@ export default function EventPage({ params }: { params: { id: string } }) {
   return (
     <div className="container mx-auto pb-16">
       {/* Event Banner */}
-      <div 
+      <div
         className="relative mb-6 h-64 overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 md:h-80"
         style={{
-          backgroundImage: event.image 
+          backgroundImage: event.image
             ? `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${event.image})`
             : undefined,
           backgroundSize: "cover",
@@ -247,14 +248,14 @@ export default function EventPage({ params }: { params: { id: string } }) {
         <div className="absolute inset-x-0 bottom-0 p-6 text-white">
           <Badge className="mb-2 bg-primary/80 hover:bg-primary/70">Event</Badge>
           <h1 className="mb-1 text-2xl font-bold md:text-4xl">{event.title}</h1>
-          
+
           <div className="mt-2 flex items-center gap-2">
             <Avatar className="h-6 w-6 border-2 border-white">
               <AvatarImage src={event.community.avatar} />
               <AvatarFallback>{event.community.name.substring(0, 2)}</AvatarFallback>
             </Avatar>
-            <Link 
-              href={`/communities/${event.community.handle}`} 
+            <Link
+              href={`/communities/${event.community.handle}`}
               className="text-sm font-medium text-white hover:underline"
             >
               {event.community.name}
@@ -296,10 +297,18 @@ export default function EventPage({ params }: { params: { id: string } }) {
                     <QrCode size={16} /> Scan QR Codes
                   </Link>
                 </Button>
+                {/* Event Notification Button */}
+                <EventNotificationButton
+                  eventId={event.id}
+                  eventTitle={event.title}
+                  eventDate={event.date}
+                  eventTime={event.time}
+                  eventLocation={event.location}
+                />
                 {/* Registration Control */}
                 {rsvpStatus && (
-                  <RegistrationControl 
-                    eventId={event.id} 
+                  <RegistrationControl
+                    eventId={event.id}
                     registrationEnabled={rsvpStatus.registrationEnabled}
                     onRegistrationChange={handleRegistrationChange}
                   />
@@ -335,7 +344,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
               </div>
             ) : (
               <div className="flex flex-wrap gap-3">
-                
+
               </div>
             )
           ) : (
@@ -400,13 +409,13 @@ export default function EventPage({ params }: { params: { id: string } }) {
             <TabsList className="mb-4 grid w-full grid-cols-1">
               <TabsTrigger value="updates">Updates</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="updates" className="mt-0 space-y-4">
               {updates.length > 0 ? (
                 updates.map(update => (
-                  <UpdateCard 
-                    key={update.id} 
-                    update={update} 
+                  <UpdateCard
+                    key={update.id}
+                    update={update}
                     eventId={event.id}
                     userPermissions={userPermissions}
                   />
@@ -429,7 +438,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
             </TabsContent>
           </Tabs>
         </div>
-        
+
 
         <div className="space-y-6 order-first lg:order-none">
           <Card>
@@ -443,7 +452,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
               </div>
               <div className="mt-4 space-y-4">
                 {rsvpStatus && (
-                  <RegisterButton 
+                  <RegisterButton
                     eventId={event.id}
                     rsvpStatus={rsvpStatus}
                     onRegistrationChange={handleRegistrationChange}

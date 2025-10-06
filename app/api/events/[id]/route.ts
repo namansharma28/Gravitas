@@ -122,6 +122,34 @@ export async function PATCH(
       }
     );
 
+    // Send notification to attendees and interested users about event update
+    try {
+      const attendees = event.attendees || [];
+      const interested = event.interested || [];
+      const recipients = Array.from(new Set([...attendees, ...interested]));
+      
+      const notifications = recipients
+        .filter((userId: string) => userId !== session.user.id) // Don't notify the updater
+        .map((userId: string) => ({
+          userId,
+          type: 'event_updated',
+          title: `Event Updated: ${title}`,
+          description: `The event "${title}" has been updated. Check out the latest details.`,
+          linkUrl: `/events/${params.id}`,
+          eventId: new ObjectId(params.id),
+          senderId: session.user.id,
+          read: false,
+          createdAt: new Date(),
+        }));
+
+      if (notifications.length > 0) {
+        await db.collection('notifications').insertMany(notifications);
+      }
+    } catch (notificationError) {
+      console.error('Error sending event update notifications:', notificationError);
+      // Don't fail the event update if notifications fail
+    }
+
     return NextResponse.json({
       id: params.id,
       title,
