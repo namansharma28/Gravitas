@@ -31,6 +31,7 @@ interface Form {
     options?: string[];
     fileTypes?: string[];
     maxFileSize?: number;
+    singleChoice?: boolean;
   }[];
 }
 
@@ -55,6 +56,11 @@ export default function SubmitFormPage({
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFile>>({});
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
+  const [capacityFull, setCapacityFull] = useState<{
+    eventTitle: string;
+    capacity: number;
+    registrationCount: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchForm();
@@ -63,17 +69,33 @@ export default function SubmitFormPage({
   async function fetchForm() {
     try {
       const response = await fetch(`/api/events/${params.id}/forms/${params.formId}`);
+
       if (!response.ok) {
-        throw new Error("Failed to fetch form");
+        const errorData = await response.json();
+
+        // Handle capacity full scenario
+        if (errorData.capacityFull) {
+          setCapacityFull({
+            eventTitle: errorData.event.title,
+            capacity: errorData.event.capacity,
+            registrationCount: errorData.event.registrationCount,
+          });
+          return;
+        }
+
+        throw new Error(errorData.error || "Failed to fetch form");
       }
+
       const data = await response.json();
       setForm(data);
-      
+
       // Initialize form data with default values
       const initialData: Record<string, any> = {};
       data.fields.forEach((field: any) => {
         if (field.type === "checkbox") {
-          if (field.options && field.options.length > 1) {
+          if (field.singleChoice) {
+            initialData[field.id] = ""; // Single choice checkbox (radio-like)
+          } else if (field.options && field.options.length > 1) {
             initialData[field.id] = []; // Multiple checkboxes
           } else {
             initialData[field.id] = false; // Single checkbox
@@ -85,10 +107,10 @@ export default function SubmitFormPage({
         }
       });
       setFormData(initialData);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to load form",
+        description: error.message || "Failed to load form",
         variant: "destructive",
       });
     } finally {
@@ -147,7 +169,7 @@ export default function SubmitFormPage({
         body: formData,
       });
 
-      const responseData = await handleApiResponse<{url: string}>(response, {
+      const responseData = await handleApiResponse<{ url: string }>(response, {
         router,
         toast,
         successMessage: {
@@ -205,17 +227,29 @@ export default function SubmitFormPage({
     for (const field of form.fields) {
       if (field.required) {
         const value = formData[field.id];
-        
+
         if (field.type === "checkbox") {
           if (field.options && field.options.length > 1) {
-            // Multiple checkboxes - check if at least one is selected
-            if (!Array.isArray(value) || value.length === 0) {
-              toast({
-                title: "Error",
-                description: `${field.label} is required`,
-                variant: "destructive",
-              });
-              return false;
+            if (field.singleChoice) {
+              // Single choice checkbox - check if one option is selected
+              if (!value || (typeof value === "string" && !value.trim())) {
+                toast({
+                  title: "Error",
+                  description: `${field.label} is required`,
+                  variant: "destructive",
+                });
+                return false;
+              }
+            } else {
+              // Multiple checkboxes - check if at least one is selected
+              if (!Array.isArray(value) || value.length === 0) {
+                toast({
+                  title: "Error",
+                  description: `${field.label} is required`,
+                  variant: "destructive",
+                });
+                return false;
+              }
             }
           } else {
             // Single checkbox
@@ -283,22 +317,35 @@ export default function SubmitFormPage({
         body: JSON.stringify({ answers }),
       });
 
-      const data = await handleApiResponse(response, {
-        router,
-        toast,
-        successMessage: {
-          title: "Success",
-          description: "Form submitted successfully",
-        },
-        errorMessage: {
-          title: "Error",
-          description: "Failed to submit form",
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        // Handle capacity full during submission
+        if (errorData.capacityFull) {
+          toast({
+            title: "Event is Full",
+            description: `Sorry, ${errorData.event.title} filled up while you were submitting the form.`,
+            variant: "destructive",
+          });
+
+          // Redirect to event page
+          setTimeout(() => {
+            router.push(`/events/${params.id}`);
+          }, 2000);
+          return;
         }
+
+        throw new Error(errorData.error || "Failed to submit form");
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: "Success",
+        description: data.message || "Form submitted successfully",
       });
 
-      if (data) {
-        router.push(`/events/${params.id}`);
-      }
+      router.push(`/events/${params.id}`);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -316,6 +363,37 @@ export default function SubmitFormPage({
         <div className="flex items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
+      </div>
+    );
+  }
+
+  // Handle capacity full scenario
+  if (capacityFull) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="mx-auto max-w-2xl">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="mb-4 rounded-full bg-red-100 p-3">
+              <X className="h-8 w-8 text-red-600" />
+            </div>
+            <h3 className="mb-2 text-xl font-semibold text-red-600">Event is Full</h3>
+            <p className="mb-4 text-center text-muted-foreground">
+              Sorry, <strong>{capacityFull.eventTitle}</strong> has reached its maximum capacity of{" "}
+              <strong>{capacityFull.capacity}</strong> attendees.
+            </p>
+            <p className="mb-6 text-center text-sm text-muted-foreground">
+              Currently {capacityFull.registrationCount} out of {capacityFull.capacity} spots are filled.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => router.back()}>
+                Go Back
+              </Button>
+              <Button onClick={() => router.push(`/events/${params.id}`)}>
+                View Event Details
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -351,7 +429,7 @@ export default function SubmitFormPage({
                   {field.label}
                   {field.required && <span className="text-red-500 ml-1">*</span>}
                 </Label>
-                
+
                 {field.type === "text" && (
                   <Input
                     id={field.id}
@@ -360,7 +438,7 @@ export default function SubmitFormPage({
                     placeholder={`Enter ${field.label.toLowerCase()}`}
                   />
                 )}
-                
+
                 {field.type === "email" && (
                   <Input
                     id={field.id}
@@ -370,7 +448,7 @@ export default function SubmitFormPage({
                     placeholder="Enter your email"
                   />
                 )}
-                
+
                 {field.type === "number" && (
                   <Input
                     id={field.id}
@@ -380,7 +458,7 @@ export default function SubmitFormPage({
                     placeholder="Enter a number"
                   />
                 )}
-                
+
                 {field.type === "select" && (
                   <Select
                     onValueChange={(value: string) => handleInputChange(field.id, value)}
@@ -398,28 +476,49 @@ export default function SubmitFormPage({
                     </SelectContent>
                   </Select>
                 )}
-                
+
                 {field.type === "checkbox" && (
                   <div className="space-y-2">
                     {field.options && field.options.length > 1 ? (
-                      // Multiple checkbox options
-                      field.options.filter(option => option.trim()).map((option) => (
-                        <div key={option} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`${field.id}-${option}`}
-                            checked={(formData[field.id] || []).includes(option)}
-                            onCheckedChange={(checked: boolean) => {
-                              const currentValues = formData[field.id] || [];
-                              if (checked) {
-                                handleInputChange(field.id, [...currentValues, option]);
-                              } else {
-                                handleInputChange(field.id, currentValues.filter((v: string) => v !== option));
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`${field.id}-${option}`}>{option}</Label>
-                        </div>
-                      ))
+                      // Multiple checkbox options or single choice
+                      field.singleChoice ? (
+                        // Single choice checkbox (radio button behavior)
+                        field.options.filter(option => option.trim()).map((option) => (
+                          <div key={option} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`${field.id}-${option}`}
+                              checked={formData[field.id] === option}
+                              onCheckedChange={(checked: boolean) => {
+                                if (checked) {
+                                  handleInputChange(field.id, option);
+                                } else {
+                                  handleInputChange(field.id, "");
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`${field.id}-${option}`}>{option}</Label>
+                          </div>
+                        ))
+                      ) : (
+                        // Multiple checkbox options (original behavior)
+                        field.options.filter(option => option.trim()).map((option) => (
+                          <div key={option} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`${field.id}-${option}`}
+                              checked={(formData[field.id] || []).includes(option)}
+                              onCheckedChange={(checked: boolean) => {
+                                const currentValues = formData[field.id] || [];
+                                if (checked) {
+                                  handleInputChange(field.id, [...currentValues, option]);
+                                } else {
+                                  handleInputChange(field.id, currentValues.filter((v: string) => v !== option));
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`${field.id}-${option}`}>{option}</Label>
+                          </div>
+                        ))
+                      )
                     ) : (
                       // Single checkbox
                       <div className="flex items-center space-x-2">
@@ -493,10 +592,10 @@ export default function SubmitFormPage({
                 )}
               </div>
             ))}
-            
-            <Button 
-              onClick={onSubmit} 
-              className="w-full" 
+
+            <Button
+              onClick={onSubmit}
+              className="w-full"
               disabled={isSubmitting || Object.values(uploadingFiles).some(Boolean)}
             >
               {isSubmitting ? "Submitting..." : "Submit"}

@@ -9,6 +9,9 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db('gravitas');
 
+    // Get current date for filtering upcoming events
+    const currentDate = new Date().toISOString().split('T')[0];
+
     // Get all communities with additional data, filtering out pending and rejected communities
     const communities = await db.collection('communities')
       .aggregate([
@@ -23,15 +26,31 @@ export async function GET() {
         },
         {
           $addFields: {
-            membersCount: { $size: '$members' },
-            upcomingEventsCount: {
-              $size: {
-                $filter: {
-                  input: '$events',
-                  cond: { $gte: ['$$this.date', new Date().toISOString().split('T')[0]] }
+            membersCount: { $size: '$members' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'events',
+            let: { communityId: { $toString: '$_id' } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$communityId', '$$communityId'] },
+                      { $gte: ['$date', currentDate] }
+                    ]
+                  }
                 }
               }
-            }
+            ],
+            as: 'upcomingEvents'
+          }
+        },
+        {
+          $addFields: {
+            upcomingEventsCount: { $size: '$upcomingEvents' }
           }
         },
         {

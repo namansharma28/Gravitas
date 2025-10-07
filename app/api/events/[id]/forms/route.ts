@@ -17,6 +17,7 @@ interface Form extends Document {
     options?: string[];
     fileTypes?: string[];
     maxFileSize?: number;
+    singleChoice?: boolean;
   }[];
   responses: FormResponse[];
   isRSVPForm?: boolean;

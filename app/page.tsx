@@ -70,7 +70,7 @@ export default function Home() {
   const [trendingCommunities, setTrendingCommunities] = useState<TrendingCommunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [followingStates, setFollowingStates] = useState<Record<string, boolean>>({});
-  
+
   // Lazy loading states
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -110,7 +110,7 @@ export default function Home() {
       if (communitiesResponse.ok) {
         const communitiesData = await communitiesResponse.json();
         setTrendingCommunities(communitiesData);
-        
+
         // Initialize following states
         const followingMap: Record<string, boolean> = {};
         communitiesData.forEach((community: TrendingCommunity) => {
@@ -127,12 +127,12 @@ export default function Home() {
 
   const loadMore = async () => {
     if (isLoadingMore || !hasMore) return;
-    
+
     setIsLoadingMore(true);
-    
+
     // Simulate loading delay for better UX
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     setPage(prev => prev + 1);
     setIsLoadingMore(false);
   };
@@ -184,8 +184,8 @@ export default function Home() {
 
         toast({
           title: data.following ? "Following community" : "Unfollowed community",
-          description: data.following 
-            ? "You'll now see updates from this community" 
+          description: data.following
+            ? "You'll now see updates from this community"
             : "You'll no longer see updates from this community",
         });
       }
@@ -210,7 +210,7 @@ export default function Home() {
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) return 'Just now';
     if (diffInHours < 24) return `${diffInHours}h ago`;
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
@@ -238,7 +238,7 @@ export default function Home() {
   return (
     <div className="container mx-auto space-y-8 py-6">
       {/* Hero Section */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-4 pb-8"
@@ -248,8 +248,8 @@ export default function Home() {
             {session ? `Welcome back, ${session.user?.name?.split(' ')[0]}!` : 'Welcome to Gravitas'}
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            {session 
-              ? "Discover what's happening in your communities and never miss an event" 
+            {session
+              ? "Discover what's happening in your communities and never miss an event"
               : "Connect with communities, discover amazing events, and build meaningful relationships"
             }
           </p>
@@ -273,7 +273,7 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <h2 className="text-xl md:text-2xl font-bold">Your Feed</h2>
             </div>
-            
+
             {!session ? (
               <div className="text-center py-16 px-4 md:px-8">
                 <motion.div
@@ -324,29 +324,29 @@ export default function Home() {
                         onClick={() => handleCardClick(item)}
                       >
                         {item.type === "event" && item.image && (
-                          <div 
-                            className="relative h-40 md:h-48 w-full bg-gradient-to-r from-[#91D6FF] to-purple-600"
+                          <div
+                            className="relative h-48 md:h-80 w-full bg-gradient-to-r from-[#91D6FF] to-purple-600"
                             style={{
-                              backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${item.image})`,
+                              backgroundImage: `url(${item.image})`,
                               backgroundSize: "cover",
                               backgroundPosition: "center",
                             }}
                           >
                             <div className="absolute inset-0 flex items-end p-4 md:p-6 text-white">
                               <div className="space-y-2">
-                                <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30">
+                                <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30" style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}>
                                   🎉 Event
                                 </Badge>
-                                <h3 className="text-xl md:text-2xl font-bold leading-tight">{item.title}</h3>
+                                <h3 className="text-xl md:text-2xl font-bold leading-tight" style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8), 0px 0px 8px rgba(0, 0, 0, 0.6)' }}>{item.title}</h3>
                                 {item.eventDate && (
-                                  <p className="flex items-center gap-2 text-white/90">
+                                  <p className="flex items-center gap-2 text-white/90" style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}>
                                     <CalendarDays size={16} /> {item.eventDate}
                                   </p>
                                 )}
                               </div>
                             </div>
                             <div className="absolute top-4 right-4">
-                              <Badge className="bg-green-500/90 text-white">
+                              <Badge className="bg-green-500/90 text-white" style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}>
                                 Upcoming
                               </Badge>
                             </div>
@@ -363,7 +363,7 @@ export default function Home() {
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <Link 
+                                <Link
                                   href={`/communities/${item.community.handle}`}
                                   onClick={(e) => e.stopPropagation()}
                                   className="font-semibold hover:text-primary transition-colors"
@@ -389,7 +389,7 @@ export default function Home() {
                           </div>
 
                           {item.eventId && item.type === "update" && (
-                            <Link 
+                            <Link
                               href={`/events/${item.eventId}`}
                               onClick={(e) => e.stopPropagation()}
                               className="block"
@@ -404,7 +404,7 @@ export default function Home() {
                           {/* Interaction Bar */}
                           <div className="flex items-center justify-between pt-4 border-t mt-4 border-border">
                             <div className="flex items-center gap-6">
-                              <button 
+                              <button
                                 className="flex items-center gap-2 text-muted-foreground hover:text-green-500 dark:hover:text-green-400 transition-colors"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -444,15 +444,15 @@ export default function Home() {
                                     transition={{ delay: 0.1 + eventIndex * 0.1 }}
                                     className="flex-shrink-0 w-72"
                                   >
-                                    <Link 
+                                    <Link
                                       href={`/events/${event._id}`}
                                       className="block rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30 bg-card"
                                     >
                                       <div className="flex items-center gap-3">
-                                        <div 
+                                        <div
                                           className="h-12 w-12 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
                                           style={{
-                                            backgroundImage: event.image 
+                                            backgroundImage: event.image
                                               ? `url(${event.image})`
                                               : undefined,
                                             backgroundSize: "cover",
@@ -534,8 +534,8 @@ export default function Home() {
                                       </Avatar>
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                          <Link 
-                                            href={`/communities/${community.handle}`} 
+                                          <Link
+                                            href={`/communities/${community.handle}`}
                                             className="font-semibold hover:text-primary transition-colors truncate text-sm"
                                           >
                                             {community.name}
@@ -581,7 +581,7 @@ export default function Home() {
                     </motion.div>
                   ))}
                 </AnimatePresence>
-                
+
                 {/* Loading indicator */}
                 {isLoadingMore && (
                   <motion.div
@@ -598,8 +598,8 @@ export default function Home() {
 
                 {/* Intersection Observer Sentinel */}
                 {hasMore && (
-                  <div 
-                    id="feed-sentinel" 
+                  <div
+                    id="feed-sentinel"
                     className="h-4 w-full"
                   />
                 )}
@@ -618,7 +618,7 @@ export default function Home() {
                     </div>
                   </motion.div>
                 )}
-                
+
                 {/* Mobile: Show sections even if no feed items or few items */}
                 {feedItems.length === 0 && (
                   <div className="md:hidden space-y-6">
@@ -645,15 +645,15 @@ export default function Home() {
                               transition={{ delay: 0.1 + eventIndex * 0.1 }}
                               className="flex-shrink-0 w-72"
                             >
-                              <Link 
+                              <Link
                                 href={`/events/${event._id}`}
                                 className="block rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30 bg-card"
                               >
                                 <div className="flex items-center gap-3">
-                                  <div 
+                                  <div
                                     className="h-12 w-12 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
                                     style={{
-                                      backgroundImage: event.image 
+                                      backgroundImage: event.image
                                         ? `url(${event.image})`
                                         : undefined,
                                       backgroundSize: "cover",
@@ -730,8 +730,8 @@ export default function Home() {
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <Link 
-                                      href={`/communities/${community.handle}`} 
+                                    <Link
+                                      href={`/communities/${community.handle}`}
                                       className="font-semibold hover:text-primary transition-colors truncate text-sm"
                                     >
                                       {community.name}
@@ -819,15 +819,15 @@ export default function Home() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.4 + index * 0.1 }}
                       >
-                        <Link 
+                        <Link
                           href={`/events/${event._id}`}
                           className="block rounded-lg border p-3 md:p-4 transition-all hover:shadow-md hover:border-primary/30 bg-card"
                         >
                           <div className="flex items-center gap-3">
-                            <div 
+                            <div
                               className="h-12 w-12 md:h-14 md:w-14 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
                               style={{
-                                backgroundImage: event.image 
+                                backgroundImage: event.image
                                   ? `url(${event.image})`
                                   : undefined,
                                 backgroundSize: "cover",
@@ -921,8 +921,8 @@ export default function Home() {
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <Link 
-                              href={`/communities/${community.handle}`} 
+                            <Link
+                              href={`/communities/${community.handle}`}
                               className="font-semibold hover:text-primary transition-colors truncate"
                             >
                               {community.name}
@@ -966,7 +966,7 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 }}
           >
-           
+
           </motion.div>
         </div>
       </div>

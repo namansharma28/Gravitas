@@ -236,27 +236,28 @@ export default function EventPage({ params }: { params: { id: string } }) {
     <div className="container mx-auto pb-16">
       {/* Event Banner */}
       <div
-        className="relative mb-6 h-64 overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 md:h-80"
+        className="relative mb-6 h-64 overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 md:h-96"
         style={{
           backgroundImage: event.image
-            ? `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${event.image})`
+            ? `url(${event.image})`
             : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
         <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-          <Badge className="mb-2 bg-primary/80 hover:bg-primary/70">Event</Badge>
-          <h1 className="mb-1 text-2xl font-bold md:text-4xl">{event.title}</h1>
+          <Badge className="mb-2 bg-primary/80 hover:bg-primary/70" style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}>Event</Badge>
+          <h1 className="mb-1 text-2xl font-bold md:text-4xl" style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8), 0px 0px 8px rgba(0, 0, 0, 0.6)' }}>{event.title}</h1>
 
           <div className="mt-2 flex items-center gap-2">
-            <Avatar className="h-6 w-6 border-2 border-white">
+            <Avatar className="h-6 w-6 border-2 border-white" style={{ filter: 'drop-shadow(1px 1px 3px rgba(0, 0, 0, 0.8))' }}>
               <AvatarImage src={event.community.avatar} />
               <AvatarFallback>{event.community.name.substring(0, 2)}</AvatarFallback>
             </Avatar>
             <Link
               href={`/communities/${event.community.handle}`}
               className="text-sm font-medium text-white hover:underline"
+              style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
             >
               {event.community.name}
             </Link>
@@ -399,7 +400,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
               <div data-color-mode={theme === "dark" ? "dark" : "light"}>
                 <Preview
                   source={event.description}
-                  className="prose max-w-none"
+                  className="prose max-w-none prose-invert dark:prose-invert"
                 />
               </div>
             </CardContent>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Edit, Share2, Users, UserPlus, Heart, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ManageMembersDialog from "./manage-members-dialog";
 
 interface CommunityHeaderProps {
   community: {
@@ -62,7 +63,7 @@ export default function CommunityHeader({ community, userPermissions }: Communit
         toast,
         successMessage: {
           title: isFollowing ? "Unfollowed community" : "Following community",
-          description: isFollowing 
+          description: isFollowing
             ? "You'll no longer see updates from this community"
             : "You'll now see updates from this community",
         },
@@ -71,7 +72,7 @@ export default function CommunityHeader({ community, userPermissions }: Communit
           description: "Failed to follow/unfollow community",
         }
       });
-      
+
       if (data) {
         setIsFollowing(data.following);
         setFollowersCount(prev => data.following ? prev + 1 : prev - 1);
@@ -141,10 +142,12 @@ export default function CommunityHeader({ community, userPermissions }: Communit
             <CalendarDays className="mr-2 h-4 w-4" />
             Create Event
           </Button>
-          <Button variant="outline">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Manage Members
-          </Button>
+          <ManageMembersDialog communityHandle={community.handle}>
+            <Button variant="outline">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Manage Members
+            </Button>
+          </ManageMembersDialog>
         </div>
       );
     }
@@ -167,7 +170,7 @@ export default function CommunityHeader({ community, userPermissions }: Communit
     // Regular user (not member)
     return (
       <div className="flex gap-2">
-        <Button 
+        <Button
           onClick={handleFollow}
           disabled={isLoading}
           variant={isFollowing ? "default" : "outline"}
@@ -197,26 +200,26 @@ export default function CommunityHeader({ community, userPermissions }: Communit
             </Avatar>
             <div className="mt-3 md:ml-6 md:mt-0 md:pb-3">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold text-white md:text-3xl">
+                <h1 className="text-2xl font-bold text-white md:text-3xl" style={{ textShadow: '2px 2px 4px rgba(80, 80, 80, 0.8), 0px 0px 8px rgba(0, 0, 0, 0.6)' }}>
                   {community.name}
                 </h1>
                 {community.isVerified && (
-                  <Badge className="border-blue-300 bg-blue-500/10 text-white">
+                  <Badge className="border-blue-300 bg-blue-500/10 text-white" style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}>
                     Verified
                   </Badge>
                 )}
                 {community.status === 'pending' && (
-                  <Badge className="border-yellow-300 bg-yellow-500/10 text-white">
+                  <Badge className="border-yellow-300 bg-yellow-500/10 text-white" style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}>
                     Pending Approval
                   </Badge>
                 )}
                 {community.status === 'rejected' && (
-                  <Badge className="border-red-300 bg-red-500/10 text-white">
+                  <Badge className="border-red-300 bg-red-500/10 text-white" style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}>
                     Rejected
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-white/90">@{community.handle}</p>
+              <p className="text-sm text-white/90" style={{ textShadow: '1px 1px 3px rgba(48, 48, 48, 0.8)' }}>@{community.handle}</p>
             </div>
           </div>
         </div>

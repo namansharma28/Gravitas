@@ -8,6 +8,7 @@ import { Globe, MapPin, Calendar, Clock, Users, Plus, CalendarDays } from "lucid
 import { useToast } from "@/hooks/use-toast";
 import CommunityHeader from "@/components/communities/community-header";
 import AddMemberDialog from "@/components/communities/add-member-dialog";
+import ManageMembersDialog from "@/components/communities/manage-members-dialog";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
@@ -622,9 +623,14 @@ export default function CommunityPage({ params }: { params: { handle: string } }
                             Edit Community
                           </Link>
                         </Button>
-                        <Button variant="outline">
-                          Manage Members
-                        </Button>
+                        <ManageMembersDialog 
+                          communityHandle={community.handle}
+                          onMembersChange={fetchCommunityData}
+                        >
+                          <Button variant="outline">
+                            Manage Members
+                          </Button>
+                        </ManageMembersDialog>
                       </div>
                     </div>
                   ) : (

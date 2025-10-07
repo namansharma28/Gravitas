@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Trash2, X, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, X, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +35,7 @@ const formSchema = z.object({
       options: z.array(z.string()).optional(),
       fileTypes: z.array(z.string()).optional(),
       maxFileSize: z.number().optional(),
+      singleChoice: z.boolean().optional(),
     })
   ),
 });
@@ -66,6 +67,7 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
           options: [],
           fileTypes: [],
           maxFileSize: 5,
+          singleChoice: false,
         },
         {
           id: crypto.randomUUID(),
@@ -75,6 +77,7 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
           options: [],
           fileTypes: [],
           maxFileSize: 5,
+          singleChoice: false,
         },
         {
           id: crypto.randomUUID(),
@@ -84,6 +87,7 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
           options: [],
           fileTypes: [],
           maxFileSize: 5,
+          singleChoice: false,
         },
       ] : [
         {
@@ -94,6 +98,7 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
           options: [],
           fileTypes: [],
           maxFileSize: 5,
+          singleChoice: false,
         },
         {
           id: crypto.randomUUID(),
@@ -103,6 +108,7 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
           options: [],
           fileTypes: [],
           maxFileSize: 5,
+          singleChoice: false,
         },
       ],
     },
@@ -132,26 +138,19 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
   }, [params.id]);
 
   const addOption = (fieldIndex: number) => {
-    const field = fields[fieldIndex];
-    const currentOptions = field.options || [];
-    const newOptions = [...currentOptions, ""];
-    
-    form.setValue(`fields.${fieldIndex}.options`, newOptions);
+    const currentOptions = form.getValues(`fields.${fieldIndex}.options`) || [];
+    form.setValue(`fields.${fieldIndex}.options`, [...currentOptions, ""]);
   };
 
   const updateOption = (fieldIndex: number, optionIndex: number, value: string) => {
-    const field = fields[fieldIndex];
-    const currentOptions = [...(field.options || [])];
+    const currentOptions = [...(form.getValues(`fields.${fieldIndex}.options`) || [])];
     currentOptions[optionIndex] = value;
-    
     form.setValue(`fields.${fieldIndex}.options`, currentOptions);
   };
 
   const removeOption = (fieldIndex: number, optionIndex: number) => {
-    const field = fields[fieldIndex];
-    const currentOptions = [...(field.options || [])];
+    const currentOptions = [...(form.getValues(`fields.${fieldIndex}.options`) || [])];
     currentOptions.splice(optionIndex, 1);
-    
     form.setValue(`fields.${fieldIndex}.options`, currentOptions);
   };
 
@@ -167,27 +166,42 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
   };
 
   const updateFileType = (fieldIndex: number, fileTypeIndex: number, value: string) => {
-    const field = fields[fieldIndex];
-    const currentFileTypes = [...(field.fileTypes || [])];
+    const currentFileTypes = [...(form.getValues(`fields.${fieldIndex}.fileTypes`) || [])];
     currentFileTypes[fileTypeIndex] = value;
     form.setValue(`fields.${fieldIndex}.fileTypes`, currentFileTypes);
   };
 
   const addFileType = (fieldIndex: number) => {
-    const field = fields[fieldIndex];
-    const currentFileTypes = field.fileTypes || [];
+    const currentFileTypes = form.getValues(`fields.${fieldIndex}.fileTypes`) || [];
     form.setValue(`fields.${fieldIndex}.fileTypes`, [...currentFileTypes, ""]);
   };
 
   const removeFileType = (fieldIndex: number, fileTypeIndex: number) => {
-    const field = fields[fieldIndex];
-    const currentFileTypes = [...(field.fileTypes || [])];
+    const currentFileTypes = [...(form.getValues(`fields.${fieldIndex}.fileTypes`) || [])];
     currentFileTypes.splice(fileTypeIndex, 1);
     form.setValue(`fields.${fieldIndex}.fileTypes`, currentFileTypes);
   };
 
   const updateFileSize = (fieldIndex: number, size: number) => {
     form.setValue(`fields.${fieldIndex}.maxFileSize`, size);
+  };
+
+  const moveFieldUp = (fieldIndex: number) => {
+    if (fieldIndex > 0) {
+      const currentFields = form.getValues("fields");
+      const newFields = [...currentFields];
+      [newFields[fieldIndex - 1], newFields[fieldIndex]] = [newFields[fieldIndex], newFields[fieldIndex - 1]];
+      form.setValue("fields", newFields);
+    }
+  };
+
+  const moveFieldDown = (fieldIndex: number) => {
+    const currentFields = form.getValues("fields");
+    if (fieldIndex < currentFields.length - 1) {
+      const newFields = [...currentFields];
+      [newFields[fieldIndex], newFields[fieldIndex + 1]] = [newFields[fieldIndex + 1], newFields[fieldIndex]];
+      form.setValue("fields", newFields);
+    }
   };
 
   const fileTypeOptions = [
@@ -370,14 +384,37 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
                 <div key={field.id} className="space-y-4 rounded-lg border p-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium">Field {index + 1}</h3>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => moveFieldUp(index)}
+                        disabled={index === 0}
+                        title="Move field up"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => moveFieldDown(index)}
+                        disabled={index === fields.length - 1}
+                        title="Move field down"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        title="Delete field"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
@@ -460,6 +497,22 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
                           </p>
                         )}
                       </div>
+                      
+                      {/* Single Choice option for checkbox fields only */}
+                      {watchedField.type === "checkbox" && (
+                        <div className="flex items-center space-x-2 pt-2 border-t">
+                          <Checkbox
+                            id={`fields.${index}.singleChoice`}
+                            checked={watchedField.singleChoice || false}
+                            onCheckedChange={(checked) => 
+                              form.setValue(`fields.${index}.singleChoice`, !!checked)
+                            }
+                          />
+                          <Label htmlFor={`fields.${index}.singleChoice`} className="text-sm">
+                            Single Choice (allow only one selection)
+                          </Label>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -547,6 +600,7 @@ export default function CreateFormPage({ params }: { params: { id: string } }) {
                   options: [],
                   fileTypes: [],
                   maxFileSize: 5,
+                  singleChoice: false,
                 })
               }
             >

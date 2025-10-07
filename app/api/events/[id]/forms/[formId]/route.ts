@@ -47,6 +47,34 @@ export async function GET(
       );
     }
 
+    // Check if this is an RSVP form and if capacity is full
+    let capacityInfo = null;
+    if (form.isRSVPForm) {
+      const registrationCount = await db.collection('eventRegistrations').countDocuments({
+        eventId: new ObjectId(params.id),
+      });
+
+      capacityInfo = {
+        current: registrationCount,
+        max: event.capacity,
+        isFull: event.capacity && registrationCount >= event.capacity,
+      };
+
+      // If capacity is full, return capacity info instead of form
+      if (capacityInfo.isFull) {
+        return NextResponse.json({
+          error: "Event is full",
+          capacityFull: true,
+          event: {
+            id: event._id.toString(),
+            title: event.title,
+            capacity: event.capacity,
+            registrationCount,
+          }
+        }, { status: 400 });
+      }
+    }
+
     // Transform the form data to match the frontend interface
     const transformedForm = {
       id: form._id.toString(),
@@ -59,6 +87,8 @@ export async function GET(
         required: field.required,
         options: field.options,
       })),
+      isRSVPForm: form.isRSVPForm,
+      capacityInfo,
     };
 
     return NextResponse.json(transformedForm);

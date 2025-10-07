@@ -77,6 +77,36 @@ export async function POST(
 
     // If this is an RSVP form, also create an event registration
     if (form.isRSVPForm) {
+      // Get event to check capacity
+      const event = await db.collection('events').findOne({ _id: new ObjectId(params.id) });
+      if (!event) {
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      }
+
+      // Check current registration count
+      const registrationCount = await db.collection('eventRegistrations').countDocuments({
+        eventId: new ObjectId(params.id),
+      });
+
+      // Check if capacity is full
+      if (event.capacity && registrationCount >= event.capacity) {
+        // Remove the form response we just created since registration failed
+        await db.collection("formResponses").deleteOne({
+          _id: response.insertedId,
+        });
+
+        return NextResponse.json({
+          error: "Event is full",
+          capacityFull: true,
+          event: {
+            id: event._id.toString(),
+            title: event.title,
+            capacity: event.capacity,
+            registrationCount,
+          }
+        }, { status: 400 });
+      }
+
       // Check if user already registered for the event
       const existingRegistration = await db.collection('eventRegistrations').findOne({
         eventId: new ObjectId(params.id),
