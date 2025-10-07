@@ -55,3 +55,42 @@
     background-color: var(--background) !important;
     color: var(--foreground) !important;
   }
+/* Ma
+rkdown Preview Components - Black background in dark mode */
+[data-color-mode="dark"] .w-md-editor-preview,
+[data-color-mode="dark"] .wmde-markdown,
+[data-color-mode="dark"] .w-md-editor-text,
+[data-color-mode="dark"] .w-md-editor-text-pre,
+[data-color-mode="dark"] .w-md-editor-text-input,
+[data-color-mode="dark"] .w-md-editor-text-textarea {
+  background-color: #000000 !important;
+}
+
+/* Target markdown preview in feed and event descriptions */
+.dark [data-color-mode="dark"] .wmde-markdown,
+.dark [data-color-mode="dark"] .w-md-editor-preview {
+  background-color: #000000 !important;
+}
+
+/* Ensure prose elements inside markdown also get black background */
+.dark .prose [data-color-mode="dark"] .wmde-markdown,
+.dark .prose [data-color-mode="dark"] .w-md-editor-preview {
+  background-color: #000000 !important;
+}
+
+/* Target specific markdown elements */
+.dark [data-color-mode="dark"] .wmde-markdown pre,
+.dark [data-color-mode="dark"] .wmde-markdown code,
+.dark [data-color-mode="dark"] .wmde-markdown blockquote {
+  background-color: #000000 !important;
+}
+
+/* Target markdown content wrapper */
+.dark [data-color-mode="dark"] .wmde-markdown-var {
+  background-color: #000000 !important;
+}
+
+/* Ensure all markdown preview containers have black background */
+.dark [data-color-mode="dark"] {
+  background-color: #000000 !important;
+}
