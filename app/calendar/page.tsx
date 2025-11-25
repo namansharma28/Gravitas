@@ -487,7 +487,7 @@ export default function CalendarPage() {
                         <CardContent className="p-3 md:p-4">
                           <div className="flex items-center gap-3 mb-3">
                             <div 
-                              className="w-10 h-10 md:w-12 md:h-12 rounded-md bg-gradient-to-r from-blue-500 to-purple-600 flex-shrink-0"
+                              className="aspect-video w-16 md:w-20 rounded-md bg-gradient-to-r from-blue-500 to-purple-600 flex-shrink-0"
                               style={{
                                 backgroundImage: event.image 
                                   ? `url(${event.image})`

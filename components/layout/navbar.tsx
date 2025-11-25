@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, CalendarDays, Loader2, Briefcase, BookOpen } from "lucide-react";
+import { Search, CalendarDays, Loader2, Briefcase, BookOpen, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSession, signOut } from "next-auth/react";
@@ -31,6 +32,7 @@ interface SearchResult {
 export default function Navbar() {
   const { data: session } = useSession();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -127,7 +129,7 @@ export default function Navbar() {
           </div>
 
           {/* Center section with search */}
-          <div className="flex items-center justify-center md:flex-1">
+          <div className="flex items-center justify-center md:flex-1 mx-6">
             <div className="flex-1 flex justify-center">
               <div className="relative w-full max-w-md" ref={searchInputRef}>
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -215,6 +217,19 @@ export default function Navbar() {
 
           {/* Right section with user controls */}
           <div className="flex items-center gap-1">
+            {/* Theme Toggle - visible on tablet and desktop */}
+            <div className="block">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="h-8 w-8"
+              >
+                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </div>
             <NotificationBell />
             {session ? (
               <DropdownMenu>

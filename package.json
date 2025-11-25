@@ -6,10 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cap:sync": "npx cap sync",
+    "cap:android": "npx cap open android",
+    "cap:ios": "npx cap open ios",
+    "build:apk": "powershell -ExecutionPolicy Bypass -File ./scripts/build-production-apk.ps1",
+    "release:check": "echo Check RELEASE_CHECKLIST.md for deployment steps"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.9.1",
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/browser": "^7.0.2",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
+    "@capacitor/ios": "^7.4.4",
     "@hookform/resolvers": "^3.9.0",
     "@next/swc-wasm-nodejs": "13.5.1",
     "@radix-ui/react-accordion": "^1.2.0",
@@ -92,5 +102,8 @@
     "vercel": "^48.2.0",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
   }
 }

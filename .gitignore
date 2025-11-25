@@ -34,3 +34,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Capacitor
+android/app/build/
+android/.gradle/
+android/local.properties
+android/keystore.properties
+ios/App/Pods/
+ios/App/build/
+.DS_Store
+
+# App signing
+*.jks
+*.keystore

@@ -257,7 +257,7 @@ export default function EditCommunityPage({ params }: { params: { handle: string
                 <div className="space-y-4">
                   <FormItem>
                     <FormLabel>Community Banner</FormLabel>
-                    <div className="relative aspect-[3/1] w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/50 group">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/50 group">
                       {bannerPreview ? (
                         <div className="relative h-full w-full">
                           <img 

@@ -325,7 +325,7 @@ export default function Home() {
                       >
                         {item.type === "event" && item.image && (
                           <div
-                            className="relative h-48 md:h-80 w-full bg-gradient-to-r from-[#91D6FF] to-purple-600"
+                            className="relative aspect-video w-full bg-gradient-to-r from-[#91D6FF] to-purple-600"
                             style={{
                               backgroundImage: `url(${item.image})`,
                               backgroundSize: "cover",
@@ -450,7 +450,7 @@ export default function Home() {
                                     >
                                       <div className="flex items-center gap-3">
                                         <div
-                                          className="h-12 w-12 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
+                                          className="aspect-video w-16 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
                                           style={{
                                             backgroundImage: event.image
                                               ? `url(${event.image})`
@@ -651,7 +651,7 @@ export default function Home() {
                               >
                                 <div className="flex items-center gap-3">
                                   <div
-                                    className="h-12 w-12 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
+                                    className="aspect-video w-16 rounded-lg bg-gradient-to-r from-[#91D6FF] to-indigo-600 flex-shrink-0 flex items-center justify-center"
                                     style={{
                                       backgroundImage: event.image
                                         ? `url(${event.image})`

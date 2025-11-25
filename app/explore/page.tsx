@@ -295,7 +295,7 @@ export default function ExplorePage() {
               <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="relative">
                   <div 
-                    className="h-32 w-full bg-gradient-to-r from-blue-500 to-purple-600"
+                    className="aspect-video w-full bg-gradient-to-r from-blue-500 to-purple-600"
                     style={{
                       backgroundImage: community.banner 
                         ? `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${community.banner})`

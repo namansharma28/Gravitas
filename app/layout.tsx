@@ -96,6 +96,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <link rel="manifest" href="/manifest.json" />
+        <script src="/capacitor-fetch.js"></script>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

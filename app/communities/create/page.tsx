@@ -238,7 +238,7 @@ export default function CreateCommunityPage() {
                 <div className="space-y-4">
                   <FormItem>
                     <FormLabel>Community Banner</FormLabel>
-                    <div className="relative aspect-[3/1] w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/50">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/50">
                       {bannerPreview ? (
                         <>
                           <img 

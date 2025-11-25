@@ -1,0 +1,28 @@
+{
+  "Capacitor Camera": {
+    "prefix": "cap-camera",
+    "body": [
+      "import { Camera, CameraResultType } from '@capacitor/camera';",
+      "",
+      "const takePhoto = async () => {",
+      "  const image = await Camera.getPhoto({",
+      "    quality: 90,",
+      "    allowEditing: true,",
+      "    resultType: CameraResultType.Uri",
+      "  });",
+      "  return image.webPath;",
+      "};"
+    ],
+    "description": "Capacitor Camera plugin usage"
+  },
+  "Capacitor Platform Check": {
+    "prefix": "cap-platform",
+    "body": [
+      "import { Capacitor } from '@capacitor/core';",
+      "",
+      "const isNative = Capacitor.isNativePlatform();",
+      "const platform = Capacitor.getPlatform(); // 'ios', 'android', or 'web'"
+    ],
+    "description": "Check if running on native platform"
+  }
+}

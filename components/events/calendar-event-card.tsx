@@ -27,7 +27,7 @@ export function CalendarEventCard({ event, variant = "default" }: CalendarEventC
     <CardContent className="p-6">
       <div className="flex items-start gap-4">
         <div
-          className="h-20 w-20 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600"
+          className="aspect-video w-32 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex-shrink-0"
           style={{
             backgroundImage: event.image
               ? `url(${event.image})`
@@ -65,7 +65,7 @@ export function CalendarEventCard({ event, variant = "default" }: CalendarEventC
     <Card className="overflow-hidden">
       <div className="relative">
         <div 
-          className="h-32 w-full bg-gradient-to-r from-blue-500 to-purple-600"
+          className="aspect-video w-full bg-gradient-to-r from-blue-500 to-purple-600"
           style={{
             backgroundImage: event.image 
               ? `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${event.image})`

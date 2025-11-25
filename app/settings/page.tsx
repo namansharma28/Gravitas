@@ -67,6 +67,7 @@ interface UserProfile {
   location?: string;
   website?: string;
   emailVerified?: boolean;
+  password?: string;
   createdAt: string;
 }
 
@@ -76,6 +77,37 @@ interface NotificationSettings {
   newFollowers: boolean;
   eventInvitations: boolean;
   weeklyDigest: boolean;
+}
+
+function PasswordManagement({ userHasPassword, userEmail }: { userHasPassword: boolean; userEmail: string }) {
+  const router = useRouter();
+  
+  const handlePasswordReset = () => {
+    router.push(`/auth/forgot-password?email=${encodeURIComponent(userEmail)}`);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
+        <p className="text-sm text-blue-900 mb-3">
+          {userHasPassword ? 
+            "To change your password, we'll send you a secure reset link via email." :
+            "Create a password to enable email/password sign-in on mobile devices."
+          }
+        </p>
+        <Button onClick={handlePasswordReset}>
+          <Mail className="mr-2 h-4 w-4" />
+          {userHasPassword ? "Change Password" : "Create Password"}
+        </Button>
+      </div>
+      
+      {!userHasPassword && (
+        <div className="text-sm text-muted-foreground">
+          <p>💡 <strong>Tip:</strong> Creating a password allows you to sign in with email/password in the mobile app where Google Sign-In is not available.</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function SettingsPage() {
@@ -96,7 +128,16 @@ export default function SettingsPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   
   // PWA Installation state
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: string[];
+    readonly userChoice: Promise<{
+      outcome: 'accepted' | 'dismissed';
+      platform: string;
+    }>;
+    prompt(): Promise<void>;
+  }
+  
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isPWAInstalled, setIsPWAInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
 
@@ -120,75 +161,81 @@ export default function SettingsPage() {
 
   // PWA Installation effect
   useEffect(() => {
-    // Check if PWA is already installed
-    const checkPWAInstallation = () => {
-      if (typeof window !== 'undefined') {
-        // Check if running in standalone mode (installed)
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-        setIsPWAInstalled(isStandalone);
-        
-        // Listen for beforeinstallprompt event
-        const handleBeforeInstallPrompt = (e: Event) => {
-          e.preventDefault();
-          setDeferredPrompt(e);
-        };
-
-        // Listen for appinstalled event
-        const handleAppInstalled = () => {
-          setIsPWAInstalled(true);
-          setDeferredPrompt(null);
-          toast({
-            title: "App installed successfully!",
-            description: "Gravitas has been installed on your device",
+    // Register service worker
+    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('SW registered: ', registration);
+          
+          // Handle service worker updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New content is available, refresh the page
+                  window.location.reload();
+                }
+              });
+            }
           });
-        };
+        })
+        .catch((registrationError) => {
+          console.log('SW registration failed: ', registrationError);
+        });
+    }
 
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        window.addEventListener('appinstalled', handleAppInstalled);
-
-        return () => {
-          window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-          window.removeEventListener('appinstalled', handleAppInstalled);
-        };
-      }
+    // Listen for beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
-    checkPWAInstallation();
+    // Check if app is already installed
+    const handleAppInstalled = () => {
+      setIsPWAInstalled(true);
+      setDeferredPrompt(null);
+      toast({
+        title: "App installed successfully!",
+        description: "Gravitas has been installed on your device",
+      });
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Check if running in standalone mode (already installed)
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsPWAInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, [toast]);
 
   const handleInstallPWA = async () => {
-    if (!deferredPrompt) {
-      toast({
-        title: "Installation not available",
-        description: "The install prompt is not available. Try refreshing the page or check if the app is already installed.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!deferredPrompt) return;
 
     setIsInstalling(true);
     try {
-      // Show the install prompt
-      deferredPrompt.prompt();
-      
-      // Wait for the user to respond to the prompt
+      await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       
       if (outcome === 'accepted') {
+        console.log('User accepted the install prompt');
         toast({
           title: "Installation started",
           description: "Gravitas is being installed on your device",
         });
       } else {
-        toast({
-          title: "Installation cancelled",
-          description: "You can install the app later from your browser menu",
-        });
+        console.log('User dismissed the install prompt');
       }
       
-      // Clear the deferred prompt
       setDeferredPrompt(null);
     } catch (error) {
+      console.error('Install error:', error);
       toast({
         title: "Installation failed",
         description: "Failed to install the app. Please try again.",
@@ -385,13 +432,10 @@ export default function SettingsPage() {
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="notifications" asChild>
-            <Link href="/settings/notifications">Notifications</Link>
-          </TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
-
         <TabsContent value="profile" className="space-y-6">
           <Card>
             <CardHeader>
@@ -521,26 +565,25 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6">
+        <TabsContent value="security" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BellRing className="h-5 w-5" />
-                Notification Settings
+                <Shield className="h-5 w-5" />
+                Password & Security
               </CardTitle>
               <CardDescription>
-                Manage your notification preferences
+                {userProfile?.password ? 
+                  "Change your password to keep your account secure" :
+                  "Create a password to enable email/password sign-in"
+                }
               </CardDescription>
             </CardHeader>
-            <CardContent className="py-4 text-center">
-              <p className="text-muted-foreground mb-4">
-                Configure how and when you receive notifications
-              </p>
-              <Button asChild>
-                <Link href="/settings/notifications">
-                  Manage Notification Settings
-                </Link>
-              </Button>
+            <CardContent>
+              <PasswordManagement 
+                userHasPassword={!!userProfile?.password} 
+                userEmail={userProfile?.email || ""} 
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -573,7 +616,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* PWA Installation Card */}
+          {/* App Installation Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -581,61 +624,93 @@ export default function SettingsPage() {
                 Install App
               </CardTitle>
               <CardDescription>
-                Install Gravitas as a native app on your device
+                Choose how you want to install Gravitas on your device
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isPWAInstalled ? (
-                <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                  <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+              {/* Progressive Web App */}
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-blue-900 dark:text-blue-100">Progressive Web App</p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Install directly from your browser. Works on all devices with offline support.
+                    </p>
+                  </div>
+                </div>
+                
+                {isPWAInstalled ? (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
                     <Download className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm font-medium text-green-900 dark:text-green-100">PWA Installed</span>
                   </div>
-                  <div>
-                    <p className="font-medium text-green-900 dark:text-green-100">App Installed</p>
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      Gravitas is installed on your device
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                      <Smartphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-blue-900 dark:text-blue-100">Install Gravitas</p>
-                      <p className="text-sm text-blue-700 dark:text-blue-300">
-                        Get a native app experience with offline support, push notifications, and quick access from your home screen.
+                ) : (
+                  <>
+                    <Button 
+                      onClick={handleInstallPWA}
+                      disabled={!deferredPrompt || isInstalling}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      {isInstalling ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Installing...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="mr-2 h-4 w-4" />
+                          Install PWA
+                        </>
+                      )}
+                    </Button>
+                    {!deferredPrompt && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Install prompt not available. Try refreshing or check if already installed.
                       </p>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    onClick={handleInstallPWA}
-                    disabled={!deferredPrompt || isInstalling}
-                    className="w-full"
-                  >
-                    {isInstalling ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Installing...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="mr-2 h-4 w-4" />
-                        Install as App
-                      </>
                     )}
-                  </Button>
-                  
-                  {!deferredPrompt && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Install prompt not available. Try refreshing the page or check if the app is already installed.
-                    </p>
-                  )}
+                  </>
+                )}
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
                 </div>
-              )}
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+
+              {/* Android Native App */}
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Smartphone className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-green-900 dark:text-green-100">Android Native App</p>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      Full native Android experience. Download APK or get it from Play Store.
+                    </p>
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={() => window.open('https://www.gravitas.page/android-app.apk', '_blank')}
+                  className="w-full"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Android APK
+                </Button>
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  Coming soon to Google Play Store
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
