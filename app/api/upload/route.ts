@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { cloudinary } from '@/lib/cloudinary';
 import sharp from 'sharp';
+import { middlewarePresets } from '@/lib/api-middleware';
 
 // Image type configurations with optimized settings
 const IMAGE_CONFIGS = {
@@ -42,7 +43,7 @@ const IMAGE_CONFIGS = {
   },
 };
 
-export async function POST(request: Request) {
+async function uploadHandler(request: Request) {
   const startTime = Date.now();
   
   try {
@@ -211,3 +212,7 @@ export async function POST(request: Request) {
     );
   }
 } 
+
+
+// Apply middleware with upload rate limiting
+export const POST = middlewarePresets.upload('upload')(uploadHandler);

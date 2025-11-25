@@ -4,8 +4,9 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import clientPromise from '@/lib/mongodb';
 import { sendOTPEmail, generateOTP } from '@/lib/email';
+import { middlewarePresets } from '@/lib/api-middleware';
 
-export async function POST(request: Request) {
+async function registerHandler(request: Request) {
   try {
     const { name, email, password } = await request.json();
 
@@ -105,3 +106,6 @@ export async function POST(request: Request) {
     );
   }
 }
+
+// Apply auth middleware with strict rate limiting (5 requests per 15 minutes)
+export const POST = middlewarePresets.auth('register')(registerHandler);
