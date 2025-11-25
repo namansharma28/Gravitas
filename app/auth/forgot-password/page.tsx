@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { Label } from "@/components/ui/label";
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -23,8 +25,11 @@ export default function ForgotPasswordPage() {
     const emailParam = searchParams.get("email");
     if (emailParam) {
       setEmail(emailParam);
+    } else if (session?.user?.email) {
+      // If user is logged in, pre-fill their email
+      setEmail(session.user.email);
     }
-  }, [searchParams]);
+  }, [searchParams, session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,9 +101,9 @@ export default function ForgotPasswordPage() {
                 Try another email
               </Button>
               <Button variant="ghost" className="w-full" asChild>
-                <Link href="/auth/signin">
+                <Link href={session ? "/settings" : "/auth/signin"}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to sign in
+                  {session ? "Back to settings" : "Back to sign in"}
                 </Link>
               </Button>
             </CardContent>
@@ -118,9 +123,14 @@ export default function ForgotPasswordPage() {
       >
         <Card>
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl">Forgot your password?</CardTitle>
+            <CardTitle className="text-2xl">
+              {session ? "Create/Change Password" : "Forgot your password?"}
+            </CardTitle>
             <CardDescription>
-              Enter your email address and we'll send you a link to reset your password
+              {session 
+                ? "We'll send you a secure link to create or change your password"
+                : "Enter your email address and we'll send you a link to reset your password"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -133,8 +143,14 @@ export default function ForgotPasswordPage() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={!!session}
                   required
                 />
+                {session && (
+                  <p className="text-xs text-muted-foreground">
+                    The reset link will be sent to your registered email
+                  </p>
+                )}
               </div>
               <Button
                 type="submit"
@@ -153,9 +169,9 @@ export default function ForgotPasswordPage() {
             </form>
             <div className="mt-4">
               <Button variant="ghost" className="w-full" asChild>
-                <Link href="/auth/signin">
+                <Link href={session ? "/settings" : "/auth/signin"}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to sign in
+                  {session ? "Back to settings" : "Back to sign in"}
                 </Link>
               </Button>
             </div>
