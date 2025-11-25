@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, Compass, Users, Plus, Loader2, Clock, MapPin, Heart, MessageCircle, Share2 } from "lucide-react";
 import Link from "next/link";
-import { useToast } from "@/hooks/use-toast";
+import { useEnhancedToast } from "@/components/ui/enhanced-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +65,7 @@ interface TrendingCommunity {
 
 export default function Home() {
   const { data: session } = useSession();
-  const { toast } = useToast();
+  const { showToast } = useEnhancedToast();
   const { theme } = useTheme();
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
@@ -164,10 +164,10 @@ export default function Home() {
 
   const handleFollow = async (communityId: string, communityHandle: string) => {
     if (!session) {
-      toast({
+      showToast({
         title: "Sign in required",
         description: "Please sign in to follow communities",
-        variant: "destructive",
+        type: "error",
       });
       return;
     }
@@ -184,27 +184,29 @@ export default function Home() {
           [communityId]: data.following
         }));
 
-        toast({
+        showToast({
           title: data.following ? "Following community" : "Unfollowed community",
           description: data.following
             ? "You'll now see updates from this community"
             : "You'll no longer see updates from this community",
+          type: "success",
         });
       }
     } catch (error) {
-      toast({
+      showToast({
         title: "Error",
         description: "Failed to follow/unfollow community",
-        variant: "destructive",
+        type: "error",
       });
     }
   };
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast({
+    showToast({
       title: "Link copied",
       description: "Feed link copied to clipboard",
+      type: "success",
     });
   };
 

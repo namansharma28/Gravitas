@@ -3,10 +3,31 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { apiCache, CACHE_TTL, generateCacheKey } from '@/lib/cache';
+import { trackDBQuery } from '@/lib/performance';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const skip = (page - 1) * limit;
+    
+    // Generate cache key based on user and pagination
+    const userId = session?.user?.id || 'anonymous';
+    const cacheKey = generateCacheKey('feed', { userId, page, limit });
+    
+    // Try to get from cache (shorter TTL for feed as it's dynamic)
+    const cached = apiCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: {
+          'X-Cache': 'HIT',
+          'Cache-Control': 'private, max-age=60',
+        },
+      });
+    }
     
     const client = await clientPromise;
     const db = client.db('gravitas');
@@ -14,17 +35,28 @@ export async function GET() {
     let feedItems = [];
 
     if (session?.user?.id) {
-      // Get communities user follows or is a member of
-      const userCommunities = await db.collection('communities').find({
-        $or: [
-          { members: session.user.id },
-          { admins: session.user.id }
-        ]
-      }).toArray();
-
-      const followedCommunities = await db.collection('follows').find({
-        userId: session.user.id
-      }).toArray();
+      // Optimize: Get community IDs in a single query
+      const [userCommunities, followedCommunities] = await trackDBQuery('get-user-communities', async () => {
+        return Promise.all([
+          db.collection('communities')
+            .find(
+              {
+                $or: [
+                  { members: session.user.id },
+                  { admins: session.user.id }
+                ]
+              },
+              { projection: { _id: 1 } } // Only get IDs
+            )
+            .toArray(),
+          db.collection('follows')
+            .find(
+              { userId: session.user.id },
+              { projection: { communityId: 1 } } // Only get communityId
+            )
+            .toArray()
+        ]);
+      });
 
       const allCommunityIds = [
         ...userCommunities.map(c => c._id.toString()),
@@ -266,7 +298,29 @@ export async function GET() {
     // Sort by creation date
     feedItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    return NextResponse.json(feedItems.slice(0, 20));
+    // Apply pagination
+    const paginatedItems = feedItems.slice(skip, skip + limit);
+    const hasMore = feedItems.length > skip + limit;
+    
+    const response = {
+      items: paginatedItems,
+      pagination: {
+        page,
+        limit,
+        total: feedItems.length,
+        hasMore,
+      },
+    };
+
+    // Cache the result (1 minute TTL for feed)
+    apiCache.set(cacheKey, response, CACHE_TTL.SHORT);
+
+    return NextResponse.json(response, {
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': 'private, max-age=60',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching feed:', error);
     return NextResponse.json(
