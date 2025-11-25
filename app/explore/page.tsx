@@ -19,6 +19,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { CommunityCardSkeleton } from "@/components/skeletons/community-card-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 
 interface Community {
   _id: string;
@@ -43,6 +46,7 @@ export default function ExplorePage() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [filteredCommunities, setFilteredCommunities] = useState<Community[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("popular");
   const [filterBy, setFilterBy] = useState("all");
@@ -58,6 +62,7 @@ export default function ExplorePage() {
 
   const fetchCommunities = async () => {
     try {
+      setError(null);
       const response = await fetch('/api/explore/communities');
       if (response.ok) {
         const data = await response.json();
@@ -69,13 +74,11 @@ export default function ExplorePage() {
           followingMap[community._id] = community.userRelation === 'follower';
         });
         setFollowingStates(followingMap);
+      } else {
+        setError("Failed to load communities. Please try again.");
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load communities",
-        variant: "destructive",
-      });
+      setError("Unable to connect to the server. Please check your internet connection.");
     } finally {
       setIsLoading(false);
     }
@@ -196,10 +199,38 @@ export default function ExplorePage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="container mx-auto py-6 px-4 sm:px-6">
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Explore Communities</h1>
+              <p className="text-muted-foreground">Discover and join communities that match your interests</p>
+            </div>
+          </div>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {[...Array(6)].map((_, i) => (
+            <CommunityCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-6 px-4 sm:px-6">
+        <div className="mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Explore Communities</h1>
+        </div>
+        <ErrorState
+          message={error}
+          onRetry={() => {
+            setError(null);
+            setIsLoading(true);
+            fetchCommunities();
+          }}
+        />
       </div>
     );
   }
@@ -268,21 +299,17 @@ export default function ExplorePage() {
       </div>
 
       {filteredCommunities.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Users className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No communities found</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              {searchQuery 
-                ? "Try adjusting your search terms or filters"
-                : "Be the first to create a community!"
-              }
-            </p>
-            <Button asChild>
-              <Link href="/communities/create">Create Community</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Users}
+          title="No communities found"
+          description={
+            searchQuery 
+              ? "Try adjusting your search terms or filters to find communities"
+              : "Be the first to create a community and start building your network!"
+          }
+          actionLabel="Create Community"
+          actionHref="/communities/create"
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredCommunities.map((community, index) => (

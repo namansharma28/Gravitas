@@ -28,6 +28,8 @@ import {
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import FeedCard from "@/components/feed/feed-card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface CalendarEvent {
   id: string;
@@ -395,25 +397,21 @@ export default function CalendarPage() {
             <ScrollArea className="h-[400px] md:h-[600px] pr-4">
               <AnimatePresence mode="wait">
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                  <div className="space-y-4 py-4">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="space-y-3">
+                        <Skeleton className="h-32 w-full rounded-lg" />
+                      </div>
+                    ))}
                   </div>
                 ) : getSelectedDateEvents().length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="flex flex-col items-center justify-center py-12"
-                  >
-                    <CalendarDays className="h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No events scheduled</h3>
-                    <p className="text-muted-foreground text-center mb-4">
-                      There are no events on this date from your communities
-                    </p>
-                    <Button asChild>
-                      <Link href="/explore">Discover Events</Link>
-                    </Button>
-                  </motion.div>
+                  <EmptyState
+                    icon={CalendarDays}
+                    title="No events scheduled"
+                    description="There are no events on this date from your communities"
+                    actionLabel="Discover Events"
+                    actionHref="/explore"
+                  />
                 ) : (
                   <motion.div
                     key={selectedDate.toISOString()}

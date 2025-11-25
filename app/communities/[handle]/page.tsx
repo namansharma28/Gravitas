@@ -22,6 +22,9 @@ import { formatDistanceToNow } from "date-fns";
 import { Calendar as CalendarIcon, Clock as ClockIcon, MapPin as MapPinIcon, Users as UsersIcon, Share2, ArrowLeft, Pencil, FileText, Mail, Trash2, QrCode, Eye } from "lucide-react";
 import UpdateCard from "@/components/events/update-card";
 import dynamic from "next/dynamic";
+import { EventCardSkeletonHorizontal } from "@/components/skeletons/event-card-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 
 // Dynamically import MD Viewer to avoid SSR issues
 const Markdown = dynamic(
@@ -228,27 +231,37 @@ export default function CommunityPage({ params }: { params: { handle: string } }
 
   if (isLoading) {
     return (
-      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="mt-4 text-muted-foreground">Loading community...</p>
+      <div className="container mx-auto pb-16">
+        <div className="mb-6 space-y-6">
+          <div className="relative aspect-video max-h-[400px] overflow-hidden rounded-xl bg-gradient-to-r from-[#91D6FF] to-purple-600 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <EventCardSkeletonHorizontal key={i} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto flex h-[calc(100vh-200px)] flex-col items-center justify-center py-10">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Community Not Found</h1>
-          <p className="text-muted-foreground mb-6">
-            {error === 'Community not found' 
+      <div className="container mx-auto py-10">
+        <ErrorState
+          title="Community Not Found"
+          message={
+            error === 'Community not found' 
               ? `The community "${params.handle}" could not be found.` 
-              : error}
-          </p>
-          <Button asChild>
-            <Link href="/">Go Home</Link>
-          </Button>
-        </div>
+              : error
+          }
+          onRetry={() => {
+            setError(null);
+            setIsLoading(true);
+            fetchCommunityData();
+          }}
+        />
       </div>
     );
   }

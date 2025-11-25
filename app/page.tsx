@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
+import { FeedCardSkeleton } from "@/components/skeletons/feed-card-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // Dynamically import MD Viewer to avoid SSR issues
 const Markdown = dynamic(
@@ -227,9 +229,26 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="container mx-auto space-y-8 py-6">
+        {/* Hero Section Skeleton */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4 pb-8"
+        >
+          <div className="text-center space-y-4">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-[#91D6FF] via-blue-600 to-purple-600 dark:from-[#91D6FF] dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+              {session ? `Welcome back, ${session.user?.name?.split(' ')[0]}!` : 'Welcome to Gravitas'}
+            </h1>
+          </div>
+        </motion.section>
+
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="lg:col-span-8 space-y-6">
+            {[...Array(3)].map((_, i) => (
+              <FeedCardSkeleton key={i} />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -292,22 +311,13 @@ export default function Home() {
                 </motion.div>
               </div>
             ) : feedItems.length === 0 ? (
-              <div className="text-center py-16 px-4 md:px-8">
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <CalendarDays className="h-16 w-16 md:h-20 md:w-20 text-purple-500 dark:text-purple-400 mx-auto mb-6" />
-                  <h3 className="text-xl md:text-2xl font-bold mb-4">Your Feed Awaits</h3>
-                  <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                    Follow some communities to see their latest updates and events here
-                  </p>
-                  <Button size="lg" asChild>
-                    <Link href="/explore">Discover Communities</Link>
-                  </Button>
-                </motion.div>
-              </div>
+              <EmptyState
+                icon={CalendarDays}
+                title="Your Feed Awaits"
+                description="Follow some communities to see their latest updates and events here"
+                actionLabel="Discover Communities"
+                actionHref="/explore"
+              />
             ) : (
               <div className="space-y-6 md:space-y-8">
                 <AnimatePresence>

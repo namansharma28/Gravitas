@@ -32,6 +32,8 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
+import { useEnhancedToast } from "@/components/ui/enhanced-toast";
+import { SuccessAnimation } from "@/components/ui/success-animation";
 import {
   Form,
   FormControl,
@@ -114,6 +116,7 @@ export default function SettingsPage() {
   const { data: session, update } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const { showToast } = useEnhancedToast();
   const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -346,15 +349,16 @@ export default function SettingsPage() {
         image: avatarPreview,
       });
 
-      toast({
+      showToast({
         title: "Profile updated",
         description: "Your profile has been updated successfully",
+        type: "success",
       });
     } catch (error) {
-      toast({
+      showToast({
         title: "Error",
         description: "Failed to update profile",
-        variant: "destructive",
+        type: "error",
       });
     } finally {
       setIsSaving(false);
@@ -378,17 +382,18 @@ export default function SettingsPage() {
         throw new Error('Failed to update notifications');
       }
 
-      toast({
-        title: "Notification settings updated",
-        description: "Your preferences have been saved",
+      showToast({
+        title: "Settings updated",
+        description: "Your notification preferences have been saved",
+        type: "success",
       });
     } catch (error) {
       // Revert the change
       setNotifications(notifications);
-      toast({
+      showToast({
         title: "Error",
         description: "Failed to update notification settings",
-        variant: "destructive",
+        type: "error",
       });
     }
   };
