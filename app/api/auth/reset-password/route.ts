@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
+import { getMongoClient } from "@/lib/mongodb";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
@@ -20,38 +20,94 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
+    let client;
+    try {
+      client = await getMongoClient();
+    } catch (dbError) {
+      console.error("Database connection error:", dbError);
+      return NextResponse.json(
+        { error: "Database connection failed. Please try again in a moment." },
+        { status: 503 }
+      );
+    }
+
     const db = client.db("gravitas");
 
     // Find user with valid reset token
-    const user = await db.collection("users").findOne({
-      resetToken: token,
-      resetTokenExpiry: { $gt: new Date() },
-    });
+    let user;
+    try {
+      console.log("Searching for user with token:", token.substring(0, 10) + "...");
+      user = await db.collection("users").findOne({
+        resetToken: token,
+        resetTokenExpiry: { $gt: new Date() },
+      });
+      console.log("User found:", user ? "Yes" : "No");
+      if (user) {
+        console.log("Token expiry:", user.resetTokenExpiry);
+        console.log("Current time:", new Date());
+      }
+    } catch (findError) {
+      console.error("Error finding user:", findError);
+      return NextResponse.json(
+        { error: "Failed to verify reset token. Please try again." },
+        { status: 500 }
+      );
+    }
 
     if (!user) {
+      // Check if token exists but is expired
+      const expiredUser = await db.collection("users").findOne({
+        resetToken: token,
+      });
+      
+      if (expiredUser) {
+        console.log("Token found but expired");
+        return NextResponse.json(
+          { error: "Reset token has expired. Please request a new one." },
+          { status: 400 }
+        );
+      }
+      
+      console.log("Token not found in database");
       return NextResponse.json(
-        { error: "Invalid or expired reset token" },
+        { error: "Invalid reset token. Please request a new one." },
         { status: 400 }
       );
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    let hashedPassword;
+    try {
+      hashedPassword = await bcrypt.hash(password, 10);
+    } catch (hashError) {
+      console.error("Password hashing error:", hashError);
+      return NextResponse.json(
+        { error: "Failed to process password. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Update user password and clear reset token
-    await db.collection("users").updateOne(
-      { _id: user._id },
-      {
-        $set: {
-          password: hashedPassword,
-        },
-        $unset: {
-          resetToken: "",
-          resetTokenExpiry: "",
-        },
-      }
-    );
+    try {
+      await db.collection("users").updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            password: hashedPassword,
+          },
+          $unset: {
+            resetToken: "",
+            resetTokenExpiry: "",
+          },
+        }
+      );
+    } catch (updateError) {
+      console.error("Error updating user password:", updateError);
+      return NextResponse.json(
+        { error: "Failed to update password. Please try again." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       { message: "Password reset successfully" },
@@ -60,7 +116,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Reset password error:", error);
     return NextResponse.json(
-      { error: "Failed to reset password" },
+      { error: `Failed to reset password: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }

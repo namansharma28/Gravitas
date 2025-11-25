@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
+import { getMongoClient } from "@/lib/mongodb";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
@@ -14,7 +14,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
+    let client;
+    try {
+      client = await getMongoClient();
+    } catch (dbError) {
+      console.error("Database connection error:", dbError);
+      return NextResponse.json(
+        { error: "Database connection failed. Please try again in a moment." },
+        { status: 503 }
+      );
+    }
+    
     const db = client.db("gravitas");
 
     // Find user by email
