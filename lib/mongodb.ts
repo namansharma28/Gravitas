@@ -28,13 +28,10 @@ if (!globalWithMongo._mongoClientPromise) {
   client = new MongoClient(uri, options);
   globalWithMongo._mongoClient = client;
   globalWithMongo._mongoClientPromise = client.connect();
+  clientPromise = globalWithMongo._mongoClientPromise;
 } else {
   client = globalWithMongo._mongoClient!;
   clientPromise = globalWithMongo._mongoClientPromise;
-}
-
-if (!clientPromise) {
-  clientPromise = globalWithMongo._mongoClientPromise!;
 }
 
 // Log connection status
