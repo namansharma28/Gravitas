@@ -700,7 +700,18 @@ export default function SettingsPage() {
                 </div>
                 
                 <Button 
-                  onClick={() => window.open('https://www.gravitas.page/android-app.apk', '_blank')}
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = '/androidApp/app-release.apk';
+                    link.download = 'gravitas-app.apk';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    toast({
+                      title: "Download started",
+                      description: "Gravitas Android app is downloading...",
+                    });
+                  }}
                   className="w-full"
                 >
                   <Download className="mr-2 h-4 w-4" />
