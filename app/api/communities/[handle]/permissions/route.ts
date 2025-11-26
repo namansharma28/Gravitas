@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import clientPromise from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
+import { log } from '@/lib/logger';
 
 export async function GET(
   request: Request,
@@ -13,15 +14,15 @@ export async function GET(
     const client = await clientPromise;
     const db = client.db('gravitas');
 
-    console.log(`[PERMISSIONS] Looking for community with handle: ${params.handle}`);
+    log.debug('Looking for community', { handle: params.handle });
     
     const community = await db.collection('communities').findOne({ handle: params.handle });
     if (!community) {
-      console.log(`[PERMISSIONS] Community not found for handle: ${params.handle}`);
+      log.warn('Community not found', { handle: params.handle });
       return NextResponse.json({ error: 'Community not found' }, { status: 404 });
     }
 
-    console.log(`[PERMISSIONS] Found community: ${community.name} (${community._id})`);
+    log.debug('Community found', { name: community.name, id: community._id });
 
     // If community is pending, only show to admins or the creator
     if (community.status === 'pending') {

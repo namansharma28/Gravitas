@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
+import { log } from "@/lib/logger";
 import { 
   User, 
   Mail, 
@@ -168,7 +169,7 @@ export default function SettingsPage() {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
-          console.log('SW registered: ', registration);
+          log.info('Service worker registered');
           
           // Handle service worker updates
           registration.addEventListener('updatefound', () => {
@@ -184,7 +185,7 @@ export default function SettingsPage() {
           });
         })
         .catch((registrationError) => {
-          console.log('SW registration failed: ', registrationError);
+          log.error('Service worker registration failed', registrationError);
         });
     }
 
@@ -227,13 +228,13 @@ export default function SettingsPage() {
       const { outcome } = await deferredPrompt.userChoice;
       
       if (outcome === 'accepted') {
-        console.log('User accepted the install prompt');
+        log.info('User accepted PWA install prompt');
         toast({
           title: "Installation started",
           description: "Gravitas is being installed on your device",
         });
       } else {
-        console.log('User dismissed the install prompt');
+        log.info('User dismissed PWA install prompt');
       }
       
       setDeferredPrompt(null);

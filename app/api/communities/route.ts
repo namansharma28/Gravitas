@@ -4,14 +4,15 @@ import { Community } from '@/lib/models/community';
 import clientPromise from '@/lib/mongodb';
 import mongoose from 'mongoose';
 import { authOptions } from '@/lib/auth';
+import { log } from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    console.log('Session in API route:', session); // Debug log
+    log.debug('Session check', { hasSession: !!session });
 
     if (!session?.user?.id) {
-      console.log('No user ID in session:', session); // Debug log
+      log.warn('No user ID in session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

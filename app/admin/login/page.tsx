@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { log } from "@/lib/logger";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function AdminLoginPage() {
     setError('');
 
     try {
-      console.log('Attempting admin login...'); // Debug log
+      log.auth('Attempting admin login', { username: formData.username });
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: {
@@ -34,9 +35,8 @@ export default function AdminLoginPage() {
         body: JSON.stringify(formData),
       });
 
-      console.log('Login response status:', response.status); // Debug log
       const data = await response.json();
-      console.log('Login response data:', data); // Debug log
+      log.auth('Login response received', { status: response.status, success: response.ok });
 
       if (!response.ok) {
         throw new Error(data.error || 'Login failed');
@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
 
       // Store the admin token
         localStorage.setItem('adminToken', data.token);
-      console.log('Admin token stored:', data.token); // Debug log
+      log.auth('Admin token stored');
 
       // Verify admin status
       const verifyResponse = await fetch('/api/admin/check-auth', {
@@ -57,9 +57,8 @@ export default function AdminLoginPage() {
         }
       });
 
-      console.log('Verify response status:', verifyResponse.status); // Debug log
       const verifyData = await verifyResponse.json();
-      console.log('Verify response data:', verifyData); // Debug log
+      log.auth('Admin verification', { status: verifyResponse.status, isAdmin: verifyData.isAdmin });
 
       if (!verifyResponse.ok || !verifyData.isAdmin) {
         localStorage.removeItem('adminToken');
@@ -75,7 +74,7 @@ export default function AdminLoginPage() {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Use window.location.replace for a hard redirect
-      console.log('Redirecting to admin dashboard...'); // Debug log
+      log.auth('Redirecting to admin dashboard');
       window.location.replace('/admin/communities');
     } catch (error) {
       console.error('Login error:', error);

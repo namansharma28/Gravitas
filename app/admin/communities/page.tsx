@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Loader2, Search, Filter, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { log } from "@/lib/logger";
 import {
   Table,
   TableBody,
@@ -77,31 +78,31 @@ export default function AdminCommunitiesPage() {
         const adminToken = localStorage.getItem('adminToken');
         
         if (!adminToken) {
-          console.log('No admin token found, redirecting to login'); // Debug log
+          log.auth('No admin token found, redirecting to login');
           router.replace('/admin/login');
           return;
         }
 
-        console.log('Checking admin auth with token:', adminToken); // Debug log
+        log.auth('Checking admin authentication');
         const response = await fetch('/api/admin/check-auth', {
           headers: {
             'Authorization': `Bearer ${adminToken}`
           }
         });
         
-        console.log('Auth check response status:', response.status); // Debug log
+        log.auth('Auth check response', { status: response.status });
         const data = await response.json();
-        console.log('Auth check response data:', data); // Debug log
+        log.auth('Auth check complete', { isAdmin: data.isAdmin });
         
         if (!response.ok || !data.isAdmin) {
-          console.log('Auth check failed, removing token and redirecting'); // Debug log
+          log.auth('Auth check failed, redirecting');
           localStorage.removeItem('adminToken');
           router.replace('/admin/login');
           return;
         }
         
         // If we get here, we're authenticated as admin
-        console.log('Admin auth successful, fetching communities'); // Debug log
+        log.auth('Admin auth successful');
         fetchCommunities();
       } catch (error) {
         console.error('Error checking admin authentication:', error);
@@ -118,12 +119,12 @@ export default function AdminCommunitiesPage() {
       const adminToken = localStorage.getItem('adminToken');
       
       if (!adminToken) {
-        console.log('No admin token found during fetch, redirecting to login'); // Debug log
+        log.auth('No admin token found');
         router.replace('/admin/login');
         return;
       }
 
-      console.log('Fetching communities with token:', adminToken); // Debug log
+      log.debug('Fetching communities');
       // Fetch all communities
       const allCommunitiesResponse = await fetch('/api/explore/communities', {
         headers: {
@@ -138,12 +139,12 @@ export default function AdminCommunitiesPage() {
         }
       });
       
-      console.log('Communities response status:', allCommunitiesResponse.status); // Debug log
-      console.log('Pending communities response status:', pendingCommunitiesResponse.status); // Debug log
+      
+      
 
       if (!allCommunitiesResponse.ok || !pendingCommunitiesResponse.ok) {
         if (allCommunitiesResponse.status === 401 || pendingCommunitiesResponse.status === 401) {
-          console.log('Unauthorized response, removing token and redirecting'); // Debug log
+          log.auth('Unauthorized, redirecting');
           localStorage.removeItem('adminToken');
           router.replace('/admin/login');
           return;
@@ -156,8 +157,8 @@ export default function AdminCommunitiesPage() {
         pendingCommunitiesResponse.json()
       ]);
 
-      console.log('Fetched communities data:', allCommunitiesData); // Debug log
-      console.log('Fetched pending communities data:', pendingCommunitiesData); // Debug log
+      log.debug('Communities fetched', { count: allCommunitiesData.length });
+      log.debug('Pending communities fetched', { count: pendingCommunitiesData.length });
 
       setCommunities(allCommunitiesData);
         setPendingCommunities(pendingCommunitiesData);
@@ -177,7 +178,7 @@ export default function AdminCommunitiesPage() {
     setProcessingId(id);
     try {
       const adminToken = localStorage.getItem('adminToken');
-      console.log('Admin token from localStorage:', adminToken); // Debug log
+      log.debug('Admin token retrieved');
 
       if (!adminToken) {
         toast({
@@ -198,7 +199,7 @@ export default function AdminCommunitiesPage() {
       });
 
       if (!verifyResponse.ok) {
-        console.log('Admin verification failed:', verifyResponse.status); // Debug log
+        log.auth('Admin verification failed', { status: verifyResponse.status });
         localStorage.removeItem('adminToken');
         toast({
           title: "Session Expired",
@@ -210,10 +211,10 @@ export default function AdminCommunitiesPage() {
       }
 
       const verifyData = await verifyResponse.json();
-      console.log('Admin verification response:', verifyData); // Debug log
+      log.auth('Admin verification complete', { isAdmin: verifyData.isAdmin });
 
       if (!verifyData.isAdmin) {
-        console.log('Not authorized as admin'); // Debug log
+        log.auth('Not authorized as admin');
         localStorage.removeItem('adminToken');
         toast({
           title: "Access Denied",
@@ -224,7 +225,7 @@ export default function AdminCommunitiesPage() {
         return;
       }
 
-      console.log('Sending approve request with token:', adminToken); // Debug log
+      log.debug('Sending approve request');
       const response = await fetch(`/api/admin/communities/approve/${id}`, { 
         method: 'POST',
         headers: {
@@ -233,9 +234,9 @@ export default function AdminCommunitiesPage() {
         }
       });
 
-      console.log('Approve response status:', response.status); // Debug log
+      log.api('POST', 'approve-community', response.status);
       const responseData = await response.json();
-      console.log('Approve response data:', responseData); // Debug log
+      log.debug('Approve response', { success: responseData.success });
 
       if (response.status === 401) {
         localStorage.removeItem('adminToken');
@@ -288,7 +289,7 @@ export default function AdminCommunitiesPage() {
     
     try {
       const adminToken = localStorage.getItem('adminToken');
-      console.log('Admin token from localStorage:', adminToken); // Debug log
+      log.debug('Admin token retrieved');
 
       if (!adminToken) {
         toast({
@@ -309,7 +310,7 @@ export default function AdminCommunitiesPage() {
       });
 
       if (!verifyResponse.ok) {
-        console.log('Admin verification failed:', verifyResponse.status); // Debug log
+        log.auth('Admin verification failed', { status: verifyResponse.status });
         localStorage.removeItem('adminToken');
         toast({
           title: "Session Expired",
@@ -321,10 +322,10 @@ export default function AdminCommunitiesPage() {
       }
 
       const verifyData = await verifyResponse.json();
-      console.log('Admin verification response:', verifyData); // Debug log
+      log.auth('Admin verification complete', { isAdmin: verifyData.isAdmin });
 
       if (!verifyData.isAdmin) {
-        console.log('Not authorized as admin'); // Debug log
+        log.auth('Not authorized as admin');
         localStorage.removeItem('adminToken');
         toast({
           title: "Access Denied",
@@ -335,7 +336,7 @@ export default function AdminCommunitiesPage() {
         return;
       }
 
-      console.log('Sending reject request with token:', adminToken); // Debug log
+      log.debug('Sending reject request');
       const response = await fetch(`/api/admin/communities/reject/${selectedCommunity.id}`, { 
         method: 'POST',
         headers: {
@@ -345,9 +346,8 @@ export default function AdminCommunitiesPage() {
         body: JSON.stringify({ reason: rejectionReason })
       });
 
-      console.log('Reject response status:', response.status); // Debug log
       const responseData = await response.json();
-      console.log('Reject response data:', responseData); // Debug log
+      log.debug('Reject response data:', responseData); // Debug log
 
       if (response.status === 401) {
         localStorage.removeItem('adminToken');

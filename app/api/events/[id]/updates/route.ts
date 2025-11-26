@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { log } from '@/lib/logger';
 
 export async function POST(
   request: Request,
@@ -197,7 +198,7 @@ export async function GET(
       }
     }
 
-    console.log("[UPDATES_GET] Visibility filter:", visibilityFilter);
+    log.debug('Updates visibility filter', { filter: visibilityFilter });
 
     // Get updates with community details
     let updates = await db.collection('updates')
@@ -294,7 +295,7 @@ export async function GET(
       updates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
-    console.log("[UPDATES_GET] Found updates:", updates.length);
+    log.debug('Updates found', { count: updates.length });
 
     // Transform the data
     const transformedUpdates = updates.map(update => ({
@@ -319,7 +320,7 @@ export async function GET(
       createdAt: update.createdAt,
     }));
 
-    console.log("[UPDATES_GET] Transformed updates:", transformedUpdates.length);
+    log.debug('Updates transformed', { count: transformedUpdates.length });
 
     return NextResponse.json(transformedUpdates);
   } catch (error: any) {

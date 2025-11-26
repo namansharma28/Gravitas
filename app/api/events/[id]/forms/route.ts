@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId, Document } from 'mongodb';
+import { log } from '@/lib/logger';
 
 interface Form extends Document {
   _id: ObjectId;
@@ -201,7 +202,7 @@ export async function GET(
       ])
       .toArray();
 
-    console.log("[FORMS_GET] Found forms:", forms.length);
+    log.debug('Forms found', { count: forms.length });
 
     // Transform the data to match the frontend interface
     const transformedForms = forms.map((form) => ({
