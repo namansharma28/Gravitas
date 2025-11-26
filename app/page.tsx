@@ -86,6 +86,13 @@ export default function Home() {
 
   // Update visible items when feed items change
   useEffect(() => {
+    // Ensure feedItems is an array
+    if (!Array.isArray(feedItems)) {
+      setVisibleItems([]);
+      setHasMore(false);
+      return;
+    }
+    
     const endIndex = page * itemsPerPage;
     setVisibleItems(feedItems.slice(0, endIndex));
     setHasMore(endIndex < feedItems.length);
@@ -101,7 +108,9 @@ export default function Home() {
 
       if (feedResponse.ok) {
         const feedData = await feedResponse.json();
-        setFeedItems(feedData);
+        // Handle both old array format and new paginated format
+        const items = Array.isArray(feedData) ? feedData : (feedData.items || []);
+        setFeedItems(items);
       }
 
       if (eventsResponse.ok) {
