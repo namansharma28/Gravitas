@@ -573,3 +573,40 @@ Need help? Reach out to us:
   <a href="#-contributing">🤝 Contribute</a> •
   <a href="#-documentation">📚 Docs</a>
 </p>
+
+
+---
+
+## 🗄️ Database Indexes
+
+For optimal query performance, create database indexes after setting up MongoDB:
+
+```bash
+# Create all indexes
+node scripts/create-indexes.js
+
+# Verify indexes
+node scripts/create-indexes.js verify
+```
+
+**Performance Impact**: 3-10x faster queries on large collections
+
+**Indexes Created**:
+- Communities: handle (unique), status, members, admins, text search
+- Events: communityId+date, date, text search
+- Follows: userId+communityId (unique), userId, communityId
+- Users: email (unique)
+- And more...
+
+📚 **Full Documentation**: See [DATABASE_INDEXES.md](./DATABASE_INDEXES.md) for complete index documentation.
+
+---
+
+## 📚 Additional Documentation
+
+- **[PERFORMANCE_IMPLEMENTATION.md](./PERFORMANCE_IMPLEMENTATION.md)** - Performance optimizations guide
+- **[SECURITY_IMPLEMENTATION.md](./SECURITY_IMPLEMENTATION.md)** - Security features and best practices
+- **[SENTRY_SETUP.md](./SENTRY_SETUP.md)** - Error monitoring setup guide
+- **[DATABASE_INDEXES.md](./DATABASE_INDEXES.md)** - Database indexes documentation
+- **[IMPROVEMENT_RECOMMENDATIONS.md](./IMPROVEMENT_RECOMMENDATIONS.md)** - Future improvements roadmap
+- **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Quick reference for common tasks
