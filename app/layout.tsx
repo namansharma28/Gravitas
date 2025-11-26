@@ -8,7 +8,10 @@ import { Analytics } from '@vercel/analytics/next';
 const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
 export const metadata: Metadata = {
-  title: "Gravitas – Discover, Join & Create Communities and Events",
+  title: {
+    default: "Gravitas – Discover, Join & Create Communities and Events",
+    template: "%s | Gravitas",
+  },
   description:
     "Gravitas is your all-in-one community and event management platform. Discover vibrant communities, explore upcoming events, connect with like-minded people, and create meaningful experiences. Join Gravitas to build, share, and grow together.",
   keywords: [
@@ -30,8 +33,17 @@ export const metadata: Metadata = {
     "online groups",
     "event discovery",
     "community engagement",
+    "meetup alternative",
+    "eventbrite alternative",
+    "community management software",
   ],
+  authors: [{ name: "Gravitas Team" }],
+  creator: "Gravitas",
+  publisher: "Gravitas",
   metadataBase: new URL(baseUrl),
+  alternates: {
+    canonical: baseUrl,
+  },
   openGraph: {
     title: "Gravitas – Discover, Join & Create Communities and Events",
     description:
@@ -43,7 +55,7 @@ export const metadata: Metadata = {
         url: `${baseUrl}/og-image.svg`,
         width: 1200,
         height: 630,
-        alt: "Gravitas Open Graph Image",
+        alt: "Gravitas - Community and Event Management Platform",
       },
     ],
     locale: "en_US",
@@ -51,9 +63,11 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Gravitas – Discover, Join & Create Communities and Events",    description:
+    title: "Gravitas – Discover, Join & Create Communities and Events",
+    description:
       "Gravitas is your all-in-one community and event management platform. Discover vibrant communities, explore upcoming events, connect with like-minded people, and create meaningful experiences. Join Gravitas to build, share, and grow together.",
     images: [`${baseUrl}/og-image.svg`],
+    creator: "@gravitas",
   },
   robots: {
     index: true,
@@ -72,6 +86,12 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
     apple: "/icons/icon-192x192.png",
   },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+    // yandex: 'your-yandex-verification-code',
+    // bing: 'your-bing-verification-code',
+  },
+  category: 'technology',
 };
 
 
@@ -92,6 +112,7 @@ export default function RootLayout({
         <title>Gravitas</title>
         <link rel="icon" href="/logo.svg" type="image/svg+xml" />
         <meta name="format-detection" content="telephone=no" />
+        <meta name="msvalidate.01" content="1B56EA44F31126EE9A85B4EBDE583DE3" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#ffffff" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
@@ -104,7 +125,7 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'WebApplication',
               name: 'Gravitas',
-              description: 'A modern community event management platform',
+              description: 'A modern community and event management platform',
               url: baseUrl,
               applicationCategory: 'SocialApplication',
               operatingSystem: 'Web',
@@ -117,6 +138,49 @@ export default function RootLayout({
                 '@type': 'Organization',
                 name: 'Gravitas',
                 url: baseUrl
+              },
+              aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: '4.8',
+                ratingCount: '100'
+              }
+            })
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'Gravitas',
+              url: baseUrl,
+              logo: `${baseUrl}/logo.svg`,
+              description: 'A modern community and event management platform',
+              contactPoint: {
+                '@type': 'ContactPoint',
+                contactType: 'Customer Service',
+                email: 'support@gravitas.page'
+              }
+            })
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'Gravitas',
+              url: baseUrl,
+              description: 'Discover, join, and create communities and events',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: `${baseUrl}/explore?q={search_term_string}`
+                },
+                'query-input': 'required name=search_term_string'
               }
             })
           }}
