@@ -7,6 +7,8 @@ import { NotificationProvider } from '@/components/notifications/notification-pr
 import Sidebar from '@/components/layout/sidebar';
 import Navbar from '@/components/layout/navbar';
 import { usePathname } from 'next/navigation';
+import { PWAInstallPrompt } from '@/components/pwa/install-prompt';
+import { OfflineIndicator } from '@/components/pwa/offline-indicator';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -27,6 +29,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               </main>
             </div>
           </div>
+          <PWAInstallPrompt />
+          <OfflineIndicator />
         </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
